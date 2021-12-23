@@ -1,81 +1,44 @@
 mod models;
-mod interaction_init;
 mod commands;
+mod services;
 
 use commands::get_framework;
 
 use std::env;
 use models::config::Config;
+use services::*;
 use std::fs;
+use env_logger::Env;
 use serde_json;
 use serenity::{
     async_trait,
     client::{Client, Context, EventHandler},
-    model::{channel::Message, gateway::Ready, interactions::{
-        application_command::ApplicationCommandInteractionDataOptionValue,
-        Interaction,
-        InteractionResponseType,
-    }}
+    model::{channel::Message, gateway::Ready, interactions::Interaction
+    }
 };
-use log::{info, error};
+use log::{error, info};
 
 struct Handler;
 
 #[async_trait]
 impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
-        if msg.content == "!hello" {
-            if let Err(why) = msg.channel_id.say(&ctx.http, "bruh").await {
-                error!("Error sending message: {:?}", why);
-            }
-        }
+        message_handler::message(ctx, msg).await;
     }
 
     async fn ready(&self, ctx: Context, ready: Ready) {
-        interaction_init::ready(ctx, ready).await;
+        bot_init::ready(ctx, ready).await;
     }
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
-        if let Interaction::ApplicationCommand(command) = interaction {
-            let content = match command.data.name.as_str() {
-                "ping" => "Hey, I'm alive!".to_string(),
-                "id" => {
-                    let options = command
-                        .data
-                        .options
-                        .get(0)
-                        .expect("Expected user option")
-                        .resolved
-                        .as_ref()
-                        .expect("Expected user object");
-
-                    if let ApplicationCommandInteractionDataOptionValue::User(user, _member) =
-                    options
-                    {
-                        format!("{}'s id is {}", user.tag(), user.id)
-                    } else {
-                        "Please provide a valid user".to_string()
-                    }
-                },
-                _ => "not implemented :(".to_string(),
-            };
-
-            if let Err(ex) = command
-                .create_interaction_response(&ctx.http, |response| {
-                    response
-                        .kind(InteractionResponseType::ChannelMessageWithSource)
-                        .interaction_response_data(|message| message.content(content))
-                })
-                .await
-            {
-                error!("Cannot respond to slash command: {}", ex);
-            }
-        }
+        interaction_handler::interaction(ctx, interaction).await;
     }
 }
 
 async fn init_logger() -> std::io::Result<()> {
-    env_logger::init();
+    let env = Env::default().default_filter_or("info");
+    env_logger::init_from_env(env);
+
     const VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
     info!("Initializing cow v{}", VERSION.unwrap_or("<unknown>"));
     info!("Reading from {}", env::current_dir()?.display());
@@ -93,13 +56,13 @@ async fn main() -> std::io::Result<()> {
     let config : Config = serde_json::from_str(&config_json).expect("config.json is malformed");
 
     let framework = get_framework(&config.cmd_prefix);
-
     let token = config.token;
     let application_id = config.application_id;
 
     let mut client = Client::builder(&token)
         .event_handler(Handler)
         .application_id(application_id)
+        // TODO: Replace with framework_arc, so we can keep a copy of the framework ref to use in interaction_handler
         .framework(framework)
         .await
         .expect("Discord failed to initialize");
