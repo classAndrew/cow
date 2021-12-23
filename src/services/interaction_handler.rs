@@ -6,7 +6,6 @@ use serenity::{
     }
 };
 use log::{error};
-use serenity::http::CacheHttp;
 
 pub async fn interaction(ctx: Context, interaction: Interaction) {
     if let Interaction::ApplicationCommand(command) = interaction {

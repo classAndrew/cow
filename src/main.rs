@@ -2,6 +2,7 @@ mod models;
 mod commands;
 mod services;
 
+use std::collections::HashSet;
 use commands::get_framework;
 
 use std::env;
@@ -13,10 +14,11 @@ use serde_json;
 use serenity::{
     async_trait,
     client::{Client, Context, EventHandler},
-    model::{channel::Message, gateway::Ready, interactions::Interaction
-    }
+    model::{channel::Message, gateway::Ready, interactions::Interaction},
+    http::Http
 };
 use log::{error, info};
+use serenity::model::id::UserId;
 
 struct Handler;
 
@@ -46,6 +48,30 @@ async fn init_logger() -> std::io::Result<()> {
     Ok(())
 }
 
+async fn fetch_bot_info(token: &str) -> (UserId, HashSet<UserId>) {
+    let http = Http::new_with_token(token);
+
+    let (app_id, owners) = match http.get_current_application_info().await {
+        Ok(info) => {
+            let mut owners = HashSet::new();
+
+            if let Some(team) = info.team {
+                owners.insert(team.owner_user_id);
+            } else {
+                owners.insert(info.owner.id);
+            }
+
+            match http.get_current_user().await {
+                Ok(app_id) => (app_id.id, owners),
+                Err(ex) => panic!("Are we not a bot? {}", ex)
+            }
+        },
+        Err(ex) => panic!("Failed to fetch bot info: {}", ex)
+    };
+
+    (app_id, owners)
+}
+
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     if let Err(ex) = init_logger().await {
@@ -55,15 +81,14 @@ async fn main() -> std::io::Result<()> {
     let config_json = fs::read_to_string("config.json").expect("config.json not found");
     let config : Config = serde_json::from_str(&config_json).expect("config.json is malformed");
 
-    let framework = get_framework(&config.cmd_prefix);
     let token = config.token;
-    let application_id = config.application_id;
+    let (app_id, owners) = fetch_bot_info(&token).await;
+    let framework = get_framework(&config.cmd_prefix, app_id, owners);
 
     let mut client = Client::builder(&token)
         .event_handler(Handler)
-        .application_id(application_id)
-        // TODO: Replace with framework_arc, so we can keep a copy of the framework ref to use in interaction_handler
-        .framework(framework)
+        .application_id(*app_id.as_u64())
+        .framework_arc(framework)
         .await
         .expect("Discord failed to initialize");
 
