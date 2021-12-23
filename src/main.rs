@@ -1,6 +1,8 @@
 mod models;
 mod interaction_init;
-mod command_framework;
+mod commands;
+
+use commands::get_framework;
 
 use std::env;
 use models::config::Config;
@@ -89,11 +91,16 @@ async fn main() -> std::io::Result<()> {
 
     let config_json = fs::read_to_string("config.json").expect("config.json not found");
     let config : Config = serde_json::from_str(&config_json).expect("config.json is malformed");
+
+    let framework = get_framework(&config.cmd_prefix);
+
     let token = config.token;
+    let application_id = config.application_id;
 
     let mut client = Client::builder(&token)
         .event_handler(Handler)
         .application_id(application_id)
+        .framework(framework)
         .await
         .expect("Discord failed to initialize");
 
