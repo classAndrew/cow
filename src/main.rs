@@ -3,7 +3,7 @@ mod commands;
 mod services;
 
 use std::collections::HashSet;
-use commands::get_framework;
+use commands::{get_framework, FrameworkContainer};
 
 use std::env;
 use models::config::Config;
@@ -14,11 +14,10 @@ use serde_json;
 use serenity::{
     async_trait,
     client::{Client, Context, EventHandler},
-    model::{channel::Message, gateway::Ready, interactions::Interaction},
+    model::{channel::Message, gateway::Ready, interactions::Interaction, id::UserId},
     http::Http
 };
 use log::{error, info};
-use serenity::model::id::UserId;
 
 struct Handler;
 
@@ -88,9 +87,14 @@ async fn main() -> std::io::Result<()> {
     let mut client = Client::builder(&token)
         .event_handler(Handler)
         .application_id(*app_id.as_u64())
-        .framework_arc(framework)
+        .framework_arc(framework.clone())
         .await
         .expect("Discord failed to initialize");
+
+    {
+        let mut data = client.data.write().await;
+        data.insert::<FrameworkContainer>(framework);
+    }
 
     if let Err(ex) = client.start().await {
         error!("Discord bot client error: {:?}", ex);
