@@ -1,0 +1,7 @@
+{
+  "token": "<Discord Bot Token>",
+  "sql_server_ip": "<IP to SQL Server>",
+  "sql_server_port": 1433,
+  "sql_server_username": "<SQL Server Login>",
+  "sql_server_password": "<SQL Server Password>"
+}

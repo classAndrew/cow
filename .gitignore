@@ -11,3 +11,21 @@ Cargo.lock
 
 # env file
 .env
+
+# CLion's IDE files
+.idea
+*.iml
+.gradle
+out/
+bin/
+build/
+gen/
+deps/
+exampleProject
+testData
+.DS_Store
+/pretty_printers_tests/target
+/native-helper/target
+
+# Skip the main config file
+config.json

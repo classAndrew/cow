@@ -1,13 +1,31 @@
 [package]
 name = "cow"
+description = "moo"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serenity = "0.10"
-dotenv = "0.15.0"
-tokio = { version = "1.5.0", features = ["net", "rt", "sync", "macros", "rt-multi-thread"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 log = "0.4"
-env_logger = "0.9.0"
+env_logger = "0.9"
+
+[dependencies.serenity]
+default-features = false
+features = [
+    "builder",
+    "cache",
+    "client",
+    "framework",
+    "gateway",
+    "http",
+    "model",
+    "standard_framework",
+    "utils",
+    "rustls_backend",
+    "unstable_discord_api" # For slash commands/components
+]
+version = "0.10"
