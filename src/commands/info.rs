@@ -1,9 +1,11 @@
-use serenity::client::Context;
-use serenity::model::channel::Message;
-use serenity::framework::standard::{
-    CommandResult,
-    macros::{
-        command
+use serenity::{
+    client::Context,
+    model::channel::Message,
+    framework::standard::{
+        CommandResult,
+        macros::{
+            command
+        }
     }
 };
 use crate::Database;

@@ -3,7 +3,7 @@ mod commands;
 mod services;
 
 use std::collections::HashSet;
-use commands::{get_framework, FrameworkContainer};
+use commands::{get_framework};
 
 use std::env;
 use models::config::Config;
@@ -19,8 +19,12 @@ use serenity::{
     http::Http
 };
 use log::{error, info};
+use serenity::framework::Framework;
 
-struct Handler;
+struct Handler {
+    framework: Arc<Box<dyn Framework + Sync + std::marker::Send>>,
+    database: Arc<Database>
+}
 
 #[async_trait]
 impl EventHandler for Handler {
@@ -33,7 +37,7 @@ impl EventHandler for Handler {
     }
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
-        interaction_handler::interaction(ctx, interaction).await;
+        interaction_handler::interaction(&ctx, &interaction, &self.framework).await;
     }
 }
 
@@ -85,18 +89,24 @@ async fn main() -> std::io::Result<()> {
     let (app_id, owners) = fetch_bot_info(&token).await;
     let framework = get_framework(&config.cmd_prefix, app_id, owners);
 
+    let event_handler = Handler {
+        framework: framework.clone(),
+        database: Arc::new(Database::new(&*config.sql_server_ip, config.sql_server_port, &*config.sql_server_username, &*config.sql_server_password).await.unwrap())
+    };
+
+    let db_clone = event_handler.database.clone();
+
     let mut client = Client::builder(&token)
-        .event_handler(Handler)
+        .event_handler(event_handler)
         .application_id(*app_id.as_u64())
-        .framework_arc(framework.clone())
+        .framework_arc(framework)
         .await
         .expect("Discord failed to initialize");
 
     {
         let mut data = client.data.write().await;
-        data.insert::<FrameworkContainer>(framework);
         // Should I wrap it with an RwLock? ...it's pooled and async is nice, but...
-        data.insert::<Database>(Arc::new(Database::new(&*config.sql_server_ip, config.sql_server_port, &*config.sql_server_username, &*config.sql_server_password).await.unwrap()));
+        data.insert::<Database>(db_clone);
     }
 
     if let Err(ex) = client.start().await {

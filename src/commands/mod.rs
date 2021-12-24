@@ -14,17 +14,10 @@ use serenity:: {
         }
     }
 };
-use serenity::prelude::TypeMapKey;
 
 use hello::*;
 use time::*;
 use info::*;
-
-pub struct FrameworkContainer;
-
-impl TypeMapKey for FrameworkContainer {
-    type Value = Arc<Box<dyn Framework + Sync + std::marker::Send>>;
-}
 
 #[group]
 #[commands(hello, time, info)]

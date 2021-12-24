@@ -1,24 +1,21 @@
+use std::sync::Arc;
 use serenity::{
     client::Context,
     model::interactions::{
         Interaction,
         InteractionResponseType
-    }
+    },
+    framework::Framework,
+    utils::CustomMessage
 };
 use log::error;
-use serenity::framework::Framework;
-use crate::FrameworkContainer;
 use chrono::{Utc};
-use serenity::utils::CustomMessage;
 
-pub async fn interaction(ctx: Context, interaction: Interaction) {
+pub async fn interaction(ctx: &Context, interaction: &Interaction, framework: &Arc<Box<dyn Framework + Sync + std::marker::Send>>) {
     if let Interaction::ApplicationCommand(command) = interaction {
         let app_id = command.application_id.as_u64();
         let cmd_name = command.data.name.as_str();
         let content = format!("<@!{}> {}", app_id, cmd_name);
-
-        let ctx_global = ctx.data.read().await;
-        let framework = ctx_global.get::<FrameworkContainer>().expect("Couldn't find framework");
 
         let mut dummy_message = CustomMessage::new();
 
