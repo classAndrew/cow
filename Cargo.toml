@@ -13,6 +13,8 @@ tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 log = "0.4"
 env_logger = "0.9"
 chrono = "0.4"
+bb8 = "0.7"
+bb8-tiberius = "0.7"
 
 [dependencies.serenity]
 default-features = false
@@ -30,3 +32,16 @@ features = [
     "unstable_discord_api" # For slash commands/components
 ]
 version = "0.10"
+
+[dependencies.tiberius]
+version = "0.6"
+default-features = false
+features = [
+    "tds73",
+    "chrono",
+    "rust_decimal",
+    "bigdecimal",
+    "integrated-auth-gssapi",
+    "vendored-openssl",
+    "winauth"
+]

@@ -17,8 +17,8 @@ pub async fn interaction(ctx: Context, interaction: Interaction) {
         let cmd_name = command.data.name.as_str();
         let content = format!("<@!{}> {}", app_id, cmd_name);
 
-        let data_read = ctx.data.read().await;
-        let fw = data_read.get::<FrameworkContainer>().expect("Couldn't find framework");
+        let ctx_global = ctx.data.read().await;
+        let framework = ctx_global.get::<FrameworkContainer>().expect("Couldn't find framework");
 
         let mut dummy_message = CustomMessage::new();
 
@@ -31,7 +31,7 @@ pub async fn interaction(ctx: Context, interaction: Interaction) {
             dummy_message.guild_id(guild_id);
         }
 
-        (*fw).dispatch(ctx.clone(), dummy_message.build()).await;
+        (*framework).dispatch(ctx.clone(), dummy_message.build()).await;
 
         if let Err(ex) = command
             .create_interaction_response(&ctx.http, |response| {

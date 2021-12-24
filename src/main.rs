@@ -7,8 +7,9 @@ use commands::{get_framework, FrameworkContainer};
 
 use std::env;
 use models::config::Config;
-use services::*;
+use services::{*, database::Database};
 use std::fs;
+use std::sync::Arc;
 use env_logger::Env;
 use serde_json;
 use serenity::{
@@ -94,6 +95,8 @@ async fn main() -> std::io::Result<()> {
     {
         let mut data = client.data.write().await;
         data.insert::<FrameworkContainer>(framework);
+        // Should I wrap it with an RwLock? ...it's pooled and async is nice, but...
+        data.insert::<Database>(Arc::new(Database::new(&*config.sql_server_ip, config.sql_server_port, &*config.sql_server_username, &*config.sql_server_password).await.unwrap()));
     }
 
     if let Err(ex) = client.start().await {

@@ -6,10 +6,19 @@ use serenity::framework::standard::{
         command
     }
 };
+use crate::Database;
 
 #[command]
 #[description = "Info about this bot."]
 pub async fn info(ctx: &Context, msg: &Message) -> CommandResult {
-    msg.channel_id.send_message(&ctx.http, |m| {m.content("I don't think, therefore I do not am.")}).await?;
+    let db = {
+        let ctx_global = ctx.data.read().await;
+        let out = ctx_global.get::<Database>().expect("Couldn't find database").clone();
+
+        out
+    };
+    let version = db.get_db_version().await.unwrap();
+    let content = format!("I don't think, therefore I do not am.\nVersion: {}", version);
+    msg.channel_id.send_message(&ctx.http, |m| {m.content(content)}).await?;
     Ok(())
 }
