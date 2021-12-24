@@ -1,8 +1,18 @@
 use bb8::Pool;
 use bb8_tiberius::ConnectionManager;
 use std::sync::Arc;
-use serenity::prelude::TypeMapKey;
+use serenity::{
+    model::id::{
+        UserId,
+        GuildId
+    },
+    prelude::TypeMapKey
+};
 use tiberius::{AuthMethod, Config};
+use rust_decimal::{
+    Decimal,
+    prelude::FromPrimitive
+};
 
 pub struct Database {
     pool: Pool<ConnectionManager>
@@ -41,6 +51,18 @@ impl Database {
             })
             .reduce(|a, b| {format!("{}\n{}", a, b)})
             .unwrap();
+
+        Ok(res)
+    }
+
+    pub async fn provide_exp(&self, server_id: GuildId, user_id: UserId) -> Result<tiberius::ExecuteResult, Box<dyn std::error::Error>> {
+        let mut conn = self.pool.get().await?;
+        let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
+        let user = Decimal::from_u64(*user_id.as_u64()).unwrap();
+        let res = conn.execute(
+            "EXEC Ranking.ProvideExp @serverid = @P1, @userid = @P2",
+            &[&server, &user])
+            .await?;
 
         Ok(res)
     }
