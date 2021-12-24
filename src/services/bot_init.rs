@@ -9,7 +9,7 @@ use serenity::{
 
 use log::{error, info};
 
-async fn register_slash_commands(ctx: Context, _: Ready) {
+async fn register_slash_commands(ctx: &Context, _: &Ready) {
     if let Err(ex) = ApplicationCommand::create_global_application_command(&ctx.http, |cmd| {
         cmd.name("info").description("Get information about this bot.")
     }).await {
@@ -19,7 +19,7 @@ async fn register_slash_commands(ctx: Context, _: Ready) {
     }
 }
 
-pub async fn ready(ctx: Context, ready: Ready) {
+pub async fn ready(ctx: &Context, ready: &Ready) {
     info!("Logged in as {}", ready.user.name);
     register_slash_commands(ctx, ready).await;
 }

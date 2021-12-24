@@ -29,11 +29,11 @@ struct Handler {
 #[async_trait]
 impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
-        message_handler::message(ctx, msg).await;
+        message_handler::message(&ctx, &msg).await;
     }
 
     async fn ready(&self, ctx: Context, ready: Ready) {
-        bot_init::ready(ctx, ready).await;
+        bot_init::ready(&ctx, &ready).await;
     }
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {

@@ -2,9 +2,12 @@ use serenity::{
     client::Context,
     model::channel::Message
 };
-use log::{debug};
+use log::{info};
 
-pub async fn message(_: Context, msg: Message) {
-    // TODO this can be used to provide if a user levels up
-    debug!("<message received by {}>", msg.author.name);
+pub async fn message(_: &Context, _msg: &Message) {
+    // This is basically useless for most cases.
+}
+
+pub async fn non_command(_: &Context, _msg: &Message) {
+    // We can use this for ranking... execute a stored proc to give exp?
 }
