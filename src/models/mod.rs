@@ -1,2 +1,4 @@
 pub mod config;
-pub mod member;
+pub mod user;
+
+use user::User;
