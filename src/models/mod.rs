@@ -1,4 +1,3 @@
 pub mod config;
-pub mod user;
-
-use user::User;
+pub mod member;
+pub mod macros;

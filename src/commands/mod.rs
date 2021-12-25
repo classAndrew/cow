@@ -1,6 +1,7 @@
 mod hello;
 mod time;
 mod info;
+mod rank;
 
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -25,9 +26,10 @@ use serenity:: {
 use hello::*;
 use time::*;
 use info::*;
+use rank::*;
 
 #[group]
-#[commands(hello, time, info)]
+#[commands(hello, time, info, rank)]
 struct General;
 
 #[hook]
