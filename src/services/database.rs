@@ -67,21 +67,23 @@ impl Database {
         Ok(res)
     }
 
-    pub async fn get_exp(&self, server_id: GuildId, user_id: UserId) -> Result<i32, Box<dyn std::error::Error>> {
+    pub async fn get_exp(&self, server_id: GuildId, user_id: UserId) -> Result<(i32, i32), Box<dyn std::error::Error>> {
         let mut conn = self.pool.get().await?;
         let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
         let user = Decimal::from_u64(*user_id.as_u64()).unwrap();
-        let ret: i32 = conn.query(
-            "SELECT xp FROM [Ranking].[Level] WHERE server_id = @P1 AND [user_id] = @P2",
+        let ret = conn.query(
+            "SELECT xp, level FROM [Ranking].[Level] WHERE server_id = @P1 AND [user_id] = @P2",
             &[&server, &user])
             .await?
-            .into_first_result()
-            .await?
-            .first()
-            .unwrap()
-            .get(0)
-            .unwrap();
+            .into_row()
+            .await?;
 
-        Ok(ret)
+        let mut out: (i32, i32) = (0, 0);
+
+        if let Some(item) = ret {
+            out = (item.get(0).unwrap(), item.get(1).unwrap());
+        }
+
+        Ok(out)
     }
 }
