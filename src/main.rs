@@ -4,8 +4,6 @@ mod services;
 
 use std::collections::HashSet;
 use commands::{get_framework};
-
-use std::env;
 use models::config::Config;
 use services::{*, database::Database};
 use std::fs;
