@@ -10,6 +10,10 @@ pub async fn message(_: &Context, _msg: &Message) {
 }
 
 pub async fn non_command(ctx: &Context, msg: &Message) {
+    if msg.author.bot {
+        return;
+    }
+
     let db = db!(ctx);
     if let Some(server_id) = msg.guild_id {
         if let Err(ex) = db.provide_exp(server_id, msg.author.id).await {
