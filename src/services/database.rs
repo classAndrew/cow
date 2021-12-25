@@ -55,23 +55,33 @@ impl Database {
         Ok(res)
     }
 
-    pub async fn provide_exp(&self, server_id: GuildId, user_id: UserId) -> Result<tiberius::ExecuteResult, Box<dyn std::error::Error>> {
+    pub async fn provide_exp(&self, server_id: GuildId, user_id: UserId) -> Result<i32, Box<dyn std::error::Error + Send + Sync>> {
         let mut conn = self.pool.get().await?;
         let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
         let user = Decimal::from_u64(*user_id.as_u64()).unwrap();
-        let res = conn.execute(
+        let res = conn.query(
             "EXEC Ranking.ProvideExp @serverid = @P1, @userid = @P2",
             &[&server, &user])
+            .await?
+            .into_row()
             .await?;
 
-        Ok(res)
+        let mut out: i32 = -1;
+        // Returns -1 (or less than 0): didn't level up
+        // If positive, that's the new level they reached
+
+        if let Some(item) = res {
+            out = item.get(0).unwrap();
+        }
+
+        Ok(out)
     }
 
     pub async fn get_exp(&self, server_id: GuildId, user_id: UserId) -> Result<(i32, i32), Box<dyn std::error::Error>> {
         let mut conn = self.pool.get().await?;
         let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
         let user = Decimal::from_u64(*user_id.as_u64()).unwrap();
-        let ret = conn.query(
+        let res = conn.query(
             "SELECT xp, level FROM [Ranking].[Level] WHERE server_id = @P1 AND [user_id] = @P2",
             &[&server, &user])
             .await?
@@ -80,7 +90,7 @@ impl Database {
 
         let mut out: (i32, i32) = (0, 0);
 
-        if let Some(item) = ret {
+        if let Some(item) = res {
             out = (item.get(0).unwrap(), item.get(1).unwrap());
         }
 
