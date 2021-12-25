@@ -4,7 +4,8 @@ use std::sync::Arc;
 use serenity::{
     model::id::{
         UserId,
-        GuildId
+        GuildId,
+        ChannelId
     },
     prelude::TypeMapKey
 };
@@ -77,7 +78,7 @@ impl Database {
         Ok(out)
     }
 
-    pub async fn get_exp(&self, server_id: GuildId, user_id: UserId) -> Result<(i32, i32), Box<dyn std::error::Error>> {
+    pub async fn get_xp(&self, server_id: GuildId, user_id: UserId) -> Result<(i32, i32), Box<dyn std::error::Error>> {
         let mut conn = self.pool.get().await?;
         let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
         let user = Decimal::from_u64(*user_id.as_u64()).unwrap();
@@ -92,6 +93,28 @@ impl Database {
 
         if let Some(item) = res {
             out = (item.get(0).unwrap(), item.get(1).unwrap());
+        }
+
+        Ok(out)
+    }
+
+    // True: disabled False: enabled
+    // Because by default a channel should be enabled, right?
+    pub async fn toggle_channel_xp(&self, server_id: GuildId, channel_id: ChannelId) -> Result<bool, Box<dyn std::error::Error>> {
+        let mut conn = self.pool.get().await?;
+        let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
+        let channel = Decimal::from_u64(*channel_id.as_u64()).unwrap();
+        let res = conn.query(
+            "EXEC [Ranking].[ToggleChannel] @serverid = @P1, @channelid = @P2",
+            &[&server, &channel])
+            .await?
+            .into_row()
+            .await?;
+
+        let mut out: bool = false;
+
+        if let Some(item) = res {
+            out = item.get(0).unwrap();
         }
 
         Ok(out)

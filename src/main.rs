@@ -8,6 +8,7 @@ use models::config::Config;
 use services::{*, database::Database};
 use std::fs;
 use std::sync::Arc;
+use std::env;
 use env_logger::Env;
 use serde_json;
 use serenity::{
