@@ -1,19 +1,12 @@
-/*
-Well, the code doesn't compile and I'm a bit unsure of this programming style
-(are you trying to make an extension function to a Message or...?)
+use serenity::builder::CreateMessage;
 
-just DM me on Discord because i don't want to bother you rn
-
-use serenity::model::channel::Embed;
-use serenity::model::channel::Message;
-
-fn level_up(m: Message, prev_lvl: u64, next_lvl: u64) -> impl Fn(Message) {
-    // serenity wants this called like channel.send_message(ctx, level_up(...))
-    // Rust compiler broken so I can't test if this actually works. fixing atm
+pub fn level_up<'a, 'b>(next_level: i32) -> impl FnOnce(&'b mut CreateMessage<'a>) -> &'b mut CreateMessage<'a>
+where 'a: 'b
+{
     move |m| {
         m.embed(|e| e
             .title("Level up")
-            .description(format!("Leveled from {} to {}.", prev_lvl, next_lvl))
+            .description(format!("You leveled up to **level {}**.", next_level))
         )
     }
-}*/
+}

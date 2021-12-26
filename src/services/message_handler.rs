@@ -3,7 +3,8 @@ use serenity::{
     model::channel::Message
 };
 use log::error;
-use crate::{Database, db};
+use serenity::utils::{MessageBuilder};
+use crate::{Database, db, models::embed};
 
 pub async fn message(_: &Context, _msg: &Message) {
     // This is basically useless for most cases.
@@ -27,8 +28,8 @@ pub async fn non_command(ctx: &Context, msg: &Message) {
 
                 if let Err(ex2) =
                     msg.channel_id.say(&ctx.http, format!("You leveled up to level {}", new_level)).await {
-                     error!("Error sending level-up message: {}", ex2)
-                };
+                    error!("Error sending level-up message: {}", ex2);
+                }
             }
         }
     }
