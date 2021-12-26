@@ -26,8 +26,11 @@ pub async fn non_command(ctx: &Context, msg: &Message) {
                 }
 
                 if let Err(ex2) =
-                    msg.channel_id.say(&ctx.http, format!("You leveled up to level {}", new_level)).await {
-                     error!("Error sending level-up message: {}", ex2)
+                    msg.channel_id.send_message(&ctx.http, |m| m.embed(|e| e
+                        .title("Level up")
+                        .description(format!("Leveled from {} to {}.", new_level-1, new_level))
+                    )).await {
+                        error!("Error sending level-up message: {}", ex2)
                 };
             }
         }
