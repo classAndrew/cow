@@ -43,7 +43,7 @@ pub async fn rank(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
 }
 
 #[command]
-#[description = "disablexp"]
+#[description = "Disable/enable experience from being collected in the current channel."]
 pub async fn disablexp(ctx: &Context, msg: &Message) -> CommandResult {
     let db = db!(ctx);
     if let Some(server_id) = msg.guild_id {
@@ -78,5 +78,11 @@ pub async fn disablexp(ctx: &Context, msg: &Message) -> CommandResult {
         msg.reply(&ctx.http, "This command can only be run in a server.").await?;
     }
 
+    Ok(())
+}
+
+#[command]
+#[description = "Get the current rankings in the server."]
+pub async fn levels(ctx: &Context, msg: &Message) -> CommandResult {
     Ok(())
 }

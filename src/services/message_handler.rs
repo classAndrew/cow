@@ -3,8 +3,7 @@ use serenity::{
     model::channel::Message
 };
 use log::error;
-use serenity::utils::{MessageBuilder};
-use crate::{Database, db, models::embed};
+use crate::{Database, db};
 
 pub async fn message(_: &Context, _msg: &Message) {
     // This is basically useless for most cases.

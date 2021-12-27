@@ -119,4 +119,8 @@ impl Database {
 
         Ok(out)
     }
+
+    // SELECT 1 FROM 
+
+    // SELECT TOP 10 user_id, level, xp FROM [Ranking].[Level] WHERE server_id = 420005591155605535 ORDER BY level DESC, xp DESC;
 }
