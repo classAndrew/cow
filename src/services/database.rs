@@ -31,6 +31,8 @@ impl Database {
         config.host(ip);
         config.port(port);
         config.authentication(AuthMethod::sql_server(usr, pwd));
+        // Default schema needs to be Cow
+        config.database("Cow");
         config.trust_cert();
 
         let manager = ConnectionManager::build(config)?;
