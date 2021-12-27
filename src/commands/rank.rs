@@ -14,6 +14,7 @@ use serenity::{
 };
 use crate::{Database, db};
 use log::{error};
+use serenity::framework::standard::CommandError;
 
 #[command]
 #[description = "Get your current rank."]
@@ -47,14 +48,15 @@ pub async fn rank(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
 pub async fn disablexp(ctx: &Context, msg: &Message) -> CommandResult {
     let db = db!(ctx);
     if let Some(server_id) = msg.guild_id {
-        if let Some(permissions) = server_id.member(&ctx.http, msg.author.id).await.unwrap().permissions {
+        let member = server_id.member(&ctx.http, msg.author.id).await.unwrap();
+        if let Some(permissions) = member.permissions {
             if !permissions.manage_channels() {
                 // No permissions, ignore.
                 return Ok(());
             }
         } else {
             error!("Failed to get permissions? This should never occur.");
-            return Ok(());
+            return Err(CommandError::from("Failed to get permissions"));
         }
 
         let mut content: String;
@@ -84,5 +86,35 @@ pub async fn disablexp(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 #[description = "Get the current rankings in the server."]
 pub async fn levels(ctx: &Context, msg: &Message) -> CommandResult {
+    let db = db!(ctx);
+    if let Some(server_id) = msg.guild_id {
+        let content: String;
+        match db.top_members(server_id).await {
+            Ok(users) => {
+               content = users.into_iter()
+                   // Too lazy to check docs if map on vectors is in order, or too lazy.
+                   // Honestly it's probably not guaranteed, feel free to change
+                   .map(|u| {
+                       let (id, level, xp) = u;
+                       format!("<@{}> - Level {}, {} xp", id, level, xp)
+                   })
+                   .reduce(|a, b| {format!("{}\n{}", a, b)})
+                   .unwrap();
+            },
+            Err(ex) => {
+                content = format!("Failed to toggle channel xp status.");
+                error!("Failed to toggle channel xp status: {}", ex);
+            }
+        }
+
+        msg.channel_id.send_message(&ctx.http, |m| {
+            m.embed(|e|
+                e.title("Top Users")
+                    .description(content)
+            )}).await?;
+    } else {
+        msg.reply(&ctx.http, "This command can only be run in a server.").await?;
+    }
+
     Ok(())
 }

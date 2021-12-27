@@ -29,7 +29,7 @@ use info::*;
 use rank::*;
 
 #[group]
-#[commands(hello, time, info, rank, disablexp)]
+#[commands(hello, time, info, rank, disablexp, levels)]
 struct General;
 
 #[hook]

@@ -14,6 +14,7 @@ use rust_decimal::{
     Decimal,
     prelude::FromPrimitive
 };
+use rust_decimal::prelude::ToPrimitive;
 
 pub struct Database {
     pool: Pool<ConnectionManager>
@@ -122,7 +123,43 @@ impl Database {
         Ok(out)
     }
 
-    // SELECT 1 FROM 
+    pub async fn channel_disabled(&self, server_id: GuildId, channel_id: ChannelId) -> Result<bool, Box<dyn std::error::Error>> {
+        let mut conn = self.pool.get().await?;
+        let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
+        let channel = Decimal::from_u64(*channel_id.as_u64()).unwrap();
+        let res = conn.query(
+            "SELECT CAST(1 AS BIT) FROM [Ranking].[DisabledChannel] WHERE server_id = @P1 AND channel_id = @P2",
+            &[&server, &channel])
+            .await?
+            .into_row()
+            .await?;
 
-    // SELECT TOP 10 user_id, level, xp FROM [Ranking].[Level] WHERE server_id = 420005591155605535 ORDER BY level DESC, xp DESC;
+        let mut out: bool = false;
+
+        if let Some(item) = res {
+            out = item.get(0).unwrap();
+        }
+
+        Ok(out)
+    }
+
+    pub async fn top_members(&self, server_id: GuildId) -> Result<Vec<(u64, i32, i32)>, Box<dyn std::error::Error>> {
+        let mut conn = self.pool.get().await?;
+        let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
+        let res = conn.query(
+            "SELECT TOP 10 user_id, level, xp FROM [Ranking].[Level] WHERE server_id = @P1 ORDER BY level DESC, xp DESC",
+            &[&server])
+            .await?
+            .into_first_result()
+            .await?
+            .into_iter()
+            .map(|row| {
+                let id: rust_decimal::Decimal = row.get(0).unwrap();
+                let value: (u64, i32, i32) = (id.to_u64().unwrap(), row.get(1).unwrap(), row.get(2).unwrap());
+                value
+            })
+            .collect::<Vec<_>>();
+
+        Ok(res)
+    }
 }
