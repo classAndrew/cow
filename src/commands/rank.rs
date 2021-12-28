@@ -49,7 +49,8 @@ pub async fn disablexp(ctx: &Context, msg: &Message) -> CommandResult {
     let db = db!(ctx);
     if let Some(server_id) = msg.guild_id {
         let member = server_id.member(&ctx.http, msg.author.id).await.unwrap();
-        if let Some(permissions) = member.permissions {
+        // Note: .permissions(&ctx) as a method is used, for *Interactions* use .permissions as a field
+        if let Ok(permissions) = member.permissions(&ctx).await {
             if !permissions.manage_channels() {
                 // No permissions, ignore.
                 return Ok(());
