@@ -162,4 +162,29 @@ impl Database {
 
         Ok(res)
     }
+
+    pub async fn get_roles(&self, server_id: GuildId) -> Result<Vec<(String, Option<u64>, i32)>, Box<dyn std::error::Error + Send + Sync>> {
+        let mut conn = self.pool.get().await?;
+        let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
+        let res = conn.query(
+            "SELECT role_name, role_id, min_level FROM [Ranking].[Role] WHERE server_id = @P1 ORDER BY min_level ASC",
+            &[&server])
+            .await?
+            .into_first_result()
+            .await?
+            .into_iter()
+            .map(|row| {
+                let name: &str = row.get(0).unwrap();
+                let mut id: Option<u64> = None;
+                if let Some(row) = row.get(1) {
+                    let id_dec: rust_decimal::Decimal = row;
+                    id = id_dec.to_u64();
+                }
+                let value: (String, Option<u64>, i32) = (String::from(name), id, row.get(2).unwrap());
+                value
+            })
+            .collect::<Vec<_>>();
+
+        Ok(res)
+    }
 }
