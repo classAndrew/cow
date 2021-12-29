@@ -137,10 +137,10 @@ pub async fn rankconfig(ctx: &Context, msg: &Message, mut args: Args) -> Command
     let db = db!(ctx);
     // So much nesting...
     if let Some(guild) = msg.guild(&ctx.cache).await {
-        if !is_admin(ctx, msg, &server_id).await {
+        if !is_admin(ctx, msg, &guild.id).await {
             return Ok(());
         }
-        
+
         if args.is_empty() {
             return config_display(ctx, msg, guild, db).await;
         }
