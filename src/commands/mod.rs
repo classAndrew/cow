@@ -2,6 +2,7 @@ mod hello;
 mod time;
 mod info;
 mod rank;
+mod rank_config;
 
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -32,6 +33,14 @@ use rank::*;
 #[commands(hello, time, info, rank, disablexp, levels, rankconfig)]
 struct General;
 
+use rank_config::*;
+
+#[group]
+#[prefixes("rankconfig", "rc")]
+#[default_command(show)]
+#[commands(show)]
+struct RankConfig;
+
 #[hook]
 async fn non_command(ctx: &Context, msg: &Message) {
     crate::message_handler::non_command(ctx, msg).await;
@@ -46,5 +55,6 @@ pub fn get_framework(pref: &str, app_id: UserId, owners: HashSet<UserId>) -> Arc
         )
         .normal_message(non_command)
         .group(&GENERAL_GROUP)
+        .group(&RANKCONFIG_GROUP)
     ));
 }

@@ -23,19 +23,9 @@ use serenity::{
 use crate::{Database, db};
 use log::{error};
 
-async fn is_admin(ctx: &Context, msg: &Message, server_id: &GuildId) -> bool {
-    let member = server_id.member(&ctx.http, msg.author.id).await.unwrap();
-    // Note: .permissions(&ctx) as a method is used, for *Interactions* use .permissions as a field
-    return if let Ok(permissions) = member.permissions(&ctx).await {
-        permissions.administrator()
-    } else {
-        error!("Failed to get permissions? This should never occur.");
-        false
-    }
-}
-
 #[command]
 #[description = "Get your current rank."]
+#[only_in(guilds)]
 pub async fn rank(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let db = db!(ctx);
     let other = args.single::<UserId>();
@@ -63,13 +53,11 @@ pub async fn rank(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
 
 #[command]
 #[description = "Disable/enable experience from being collected in the current channel."]
+#[only_in(guilds)]
+#[required_permissions("ADMINISTRATOR")]
 pub async fn disablexp(ctx: &Context, msg: &Message) -> CommandResult {
     let db = db!(ctx);
     if let Some(server_id) = msg.guild_id {
-        if !is_admin(ctx, msg, &server_id).await {
-            return Ok(());
-        }
-
         let mut content: String;
         match db.toggle_channel_xp(server_id, msg.channel_id).await {
             Ok(toggle) => {
@@ -96,6 +84,7 @@ pub async fn disablexp(ctx: &Context, msg: &Message) -> CommandResult {
 
 #[command]
 #[description = "Get the current rankings in the server."]
+#[only_in(guilds)]
 pub async fn levels(ctx: &Context, msg: &Message) -> CommandResult {
     let db = db!(ctx);
     if let Some(server_id) = msg.guild_id {
@@ -113,8 +102,8 @@ pub async fn levels(ctx: &Context, msg: &Message) -> CommandResult {
                    .unwrap();
             },
             Err(ex) => {
-                content = format!("Failed to toggle channel xp status.");
-                error!("Failed to toggle channel xp status: {}", ex);
+                content = format!("Failed to get rankings.");
+                error!("Failed to get rankings: {}", ex);
             }
         }
 
@@ -128,75 +117,4 @@ pub async fn levels(ctx: &Context, msg: &Message) -> CommandResult {
     }
 
     Ok(())
-}
-
-#[command]
-#[description = "Configure how ranks are provided."]
-// Parameters: rankconfig [min_level] [rank]
-pub async fn rankconfig(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    let db = db!(ctx);
-    // So much nesting...
-    if let Some(guild) = msg.guild(&ctx.cache).await {
-        if !is_admin(ctx, msg, &guild.id).await {
-            return Ok(());
-        }
-
-        if args.is_empty() {
-            return config_display(ctx, msg, guild, db).await;
-        }
-
-        if let Ok(min_level) = args.single::<i32>() {
-            let role_id: RoleId;
-
-            if let Ok(role) = args.parse::<RoleId>() {
-                role_id = role;
-            } else {
-                let role_text = args.rest();
-                if let Some(role) = guild.role_by_name(role_text) {
-                    role_id = role.id;
-                } else {
-                    let content = MessageBuilder::new().push("Could not find a role on this server matching \"").push_safe(role_text).push("\"!").build();
-                    msg.channel_id.say(&ctx.http, content).await?;
-                    return Ok(())
-                }
-            }
-
-            // Both min_level and role_id are initialized by this point
-
-
-        } else {
-            msg.channel_id.say(&ctx.http, "The first argument should be a positive integer, representing the minimum level for this rank.").await?;
-        }
-    } else {
-        msg.reply(&ctx.http, "This command can only be run in a server.").await?;
-    }
-
-    Ok(())
-}
-
-async fn config_display(ctx: &Context, msg: &Message, guild: Guild, db: std::sync::Arc<Database>) -> CommandResult {
-    match db.get_roles(guild.id).await {
-        Ok(items) => {
-            if let Err(ex) = msg.channel_id.send_message(&ctx.http, |m| {m.embed(|e| {
-                e.title("Rank to Level Mapping")
-                    .description(
-                         items.into_iter()
-                             .map(|i| {
-                                 let (name, role, level) = i;
-                                 let mut content = format!("{}: <no role> at level {}", name, level);
-                                 if let Some(role_id) = role {
-                                     content = format!("{}: <@&{}> at level {}", name, role_id, level);
-                                 }
-                                 content
-                             })
-                             .reduce(|a, b| {format!("{}\n{}", a, b)})
-                             .unwrap()
-            )})}).await {
-                error!("Failed to send message to server: {}", ex);
-            }
-        },
-        Err(ex) => error!("Failed to get roles for server: {}", ex)
-    }
-
-    return Ok(())
 }
