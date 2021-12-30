@@ -103,14 +103,13 @@ pub async fn levels(ctx: &Context, msg: &Message) -> CommandResult {
         match db.top_members(server_id).await {
             Ok(users) => {
                content = users.into_iter()
-                   // Too lazy to check docs if map on vectors is in order, or too lazy.
-                   // Honestly it's probably not guaranteed, feel free to change
+                   // it's ordered
                    .map(|u| {
                        let (id, level, xp) = u;
                        format!("<@{}> - Level {}, {} xp", id, level, xp)
                    })
                    .reduce(|a, b| {format!("{}\n{}", a, b)})
-                   .unwrap();
+                   .expect("nothing inserted in Ranking.Levels")
             },
             Err(ex) => {
                 content = format!("Failed to toggle channel xp status.");
@@ -147,12 +146,15 @@ pub async fn rankconfig(ctx: &Context, msg: &Message, mut args: Args) -> Command
 
         if let Ok(min_level) = args.single::<i32>() {
             let role_id: RoleId;
+            let role_text: String;
 
             if let Ok(role) = args.parse::<RoleId>() {
                 role_id = role;
+                let role = &ctx.cache.role(guild, role_id).await.unwrap();
+                role_text = role.name.clone();
             } else {
-                let role_text = args.rest();
-                if let Some(role) = guild.role_by_name(role_text) {
+                role_text = args.rest().to_string();
+                if let Some(role) = guild.role_by_name(&role_text) {
                     role_id = role.id;
                 } else {
                     let content = MessageBuilder::new().push("Could not find a role on this server matching \"").push_safe(role_text).push("\"!").build();
@@ -162,7 +164,7 @@ pub async fn rankconfig(ctx: &Context, msg: &Message, mut args: Args) -> Command
             }
 
             // Both min_level and role_id are initialized by this point
-
+            db.add_role(msg.guild_id.unwrap(), &role_text, role_id, min_level).await?;
 
         } else {
             msg.channel_id.say(&ctx.http, "The first argument should be a positive integer, representing the minimum level for this rank.").await?;
@@ -190,7 +192,7 @@ async fn config_display(ctx: &Context, msg: &Message, guild: Guild, db: std::syn
                                  content
                              })
                              .reduce(|a, b| {format!("{}\n{}", a, b)})
-                             .unwrap()
+                             .expect("no roles registered")
             )})}).await {
                 error!("Failed to send message to server: {}", ex);
             }
