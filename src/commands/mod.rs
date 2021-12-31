@@ -30,15 +30,15 @@ use info::*;
 use rank::*;
 
 #[group]
-#[commands(hello, time, info, rank, disablexp, levels, rankconfig)]
+#[commands(hello, time, info, rank, disablexp, levels)]
 struct General;
 
 use rank_config::*;
 
 #[group]
 #[prefixes("rankconfig", "rc")]
-#[default_command(show)]
-#[commands(show)]
+#[default_command(list)]
+#[commands(list, add)]
 struct RankConfig;
 
 #[hook]

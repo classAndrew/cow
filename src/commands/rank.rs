@@ -3,11 +3,8 @@ use serenity::{
     model::{
         channel::Message,
         id::{
-            UserId,
-            RoleId,
-            GuildId
-        },
-        guild::Guild
+            UserId
+        }
     },
     framework::standard::{
         CommandResult,
@@ -15,9 +12,6 @@ use serenity::{
             command
         },
         Args
-    },
-    utils::{
-        MessageBuilder
     }
 };
 use crate::{Database, db};
@@ -92,14 +86,12 @@ pub async fn levels(ctx: &Context, msg: &Message) -> CommandResult {
         match db.top_members(server_id).await {
             Ok(users) => {
                content = users.into_iter()
-                   // Too lazy to check docs if map on vectors is in order, or too lazy.
-                   // Honestly it's probably not guaranteed, feel free to change
                    .map(|u| {
                        let (id, level, xp) = u;
                        format!("<@{}> - Level {}, {} xp", id, level, xp)
                    })
                    .reduce(|a, b| {format!("{}\n{}", a, b)})
-                   .unwrap();
+                   .unwrap_or(String::from("Nobody is ranked in this server."))
             },
             Err(ex) => {
                 content = format!("Failed to get rankings.");

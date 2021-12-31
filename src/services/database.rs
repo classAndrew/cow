@@ -5,7 +5,7 @@ use serenity::{
     model::id::{
         UserId,
         GuildId,
-        ChannelId
+        ChannelId, RoleId
     },
     prelude::TypeMapKey
 };
@@ -186,5 +186,26 @@ impl Database {
             .collect::<Vec<_>>();
 
         Ok(res)
+    }
+
+    // will also set role 
+    pub async fn add_role(&self, server_id: GuildId, role_name: &String, role_id: RoleId, min_level: i32) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+        let mut conn = self.pool.get().await?;
+        let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
+        let role = Decimal::from_u64(*role_id.as_u64()).unwrap();
+        conn.query(
+            "EXEC [Ranking].[AddRole] @server_id = @P1, @role_name = @P2, @role_id = @P3, @min_level = @P4",
+            &[&server, role_name, &role, &Decimal::from_i32(min_level).unwrap()])
+            .await?
+            .into_row()
+            .await?;
+
+        let mut out: bool = false;
+
+        if let Some(item) = res {
+            out = item.get(0).unwrap();
+        }
+
+        Ok(out)
     }
 }
