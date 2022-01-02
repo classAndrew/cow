@@ -1,4 +1,3 @@
-use std::error::Error;
 use serenity::{
     client::Context,
     model::{

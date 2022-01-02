@@ -193,7 +193,7 @@ impl Database {
         let mut conn = self.pool.get().await?;
         let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
         let role = Decimal::from_u64(*role_id.as_u64()).unwrap();
-        conn.query(
+        let res = conn.query(
             "EXEC [Ranking].[AddRole] @server_id = @P1, @role_name = @P2, @role_id = @P3, @min_level = @P4",
             &[&server, role_name, &role, &Decimal::from_i32(min_level).unwrap()])
             .await?
