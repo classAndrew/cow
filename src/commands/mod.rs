@@ -1,7 +1,4 @@
-mod hello;
-mod time;
-mod info;
-mod rank;
+mod general;
 mod rank_config;
 
 use std::collections::HashSet;
@@ -15,31 +12,14 @@ use serenity:: {
         Framework,
         standard::{
             StandardFramework,
-            macros::{
-                group,
-                hook
-            }
+            macros::hook
         }
     },
     client::Context
 };
 
-use hello::*;
-use time::*;
-use info::*;
-use rank::*;
-
-#[group]
-#[commands(hello, time, info, rank, disablexp, levels)]
-struct General;
-
-use rank_config::*;
-
-#[group]
-#[prefixes("rankconfig", "rc")]
-#[default_command(list)]
-#[commands(list, add)]
-struct RankConfig;
+use crate::commands::general::GENERAL_GROUP;
+use crate::commands::rank_config::RANKCONFIG_GROUP;
 
 #[hook]
 async fn non_command(ctx: &Context, msg: &Message) {

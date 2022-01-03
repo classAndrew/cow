@@ -193,9 +193,29 @@ impl Database {
         let mut conn = self.pool.get().await?;
         let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
         let role = Decimal::from_u64(*role_id.as_u64()).unwrap();
-        conn.query(
+        let res = conn.query(
             "EXEC [Ranking].[AddRole] @server_id = @P1, @role_name = @P2, @role_id = @P3, @min_level = @P4",
             &[&server, role_name, &role, &Decimal::from_i32(min_level).unwrap()])
+            .await?
+            .into_row()
+            .await?;
+
+        let mut out: bool = false;
+
+        if let Some(item) = res {
+            out = item.get(0).unwrap();
+        }
+
+        Ok(out)
+    }
+
+    pub async fn remove_role(&self, server_id: GuildId, role_id: RoleId) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+        let mut conn = self.pool.get().await?;
+        let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
+        let role = Decimal::from_u64(*role_id.as_u64()).unwrap();
+        let res = conn.query(
+            "EXEC [Ranking].[RemoveRole] @serverid = @P1, @roleid = @P2",
+            &[&server, &role])
             .await?
             .into_row()
             .await?;
