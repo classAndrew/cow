@@ -28,14 +28,16 @@ pub async fn rank(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
 
         if let Ok(other_id) = other {
             let (xp, level) = db.get_xp(server_id, other_id).await.unwrap();
+            let next_level_xp = db.calculate_level(level).await.unwrap();
             if let Ok(other_user) = other_id.to_user(&ctx.http).await {
-                content = format!("{} has {} xp, now at level {}", other_user.name, xp, level);
+                content = format!("{} has {} xp out of {} xp, now at level {}", other_user.name, xp, next_level_xp, level);
             } else {
                 content = format!("Could not find user...");
             }
         } else {
             let (xp, level) = db.get_xp(server_id, msg.author.id).await.unwrap();
-            content = format!("You have {} xp, now at level {}", xp, level);
+            let next_level_xp = db.calculate_level(level).await.unwrap();
+            content = format!("You have {} xp out of {} xp, now at level {}", xp, next_level_xp, level);
         }
         msg.channel_id.send_message(&ctx.http, |m| {m.content(content)}).await?;
     } else {

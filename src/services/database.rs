@@ -59,7 +59,7 @@ impl Database {
         Ok(res)
     }
 
-    pub async fn provide_exp(&self, server_id: GuildId, user_id: UserId) -> Result<i32, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn provide_exp(&self, server_id: GuildId, user_id: UserId) -> Result<(i32, Option<u64>, Option<u64>), Box<dyn std::error::Error + Send + Sync>> {
         let mut conn = self.pool.get().await?;
         let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
         let user = Decimal::from_u64(*user_id.as_u64()).unwrap();
@@ -70,12 +70,26 @@ impl Database {
             .into_row()
             .await?;
 
-        let mut out: i32 = -1;
+        let mut out: (i32, Option<u64>, Option<u64>) = (-1, None, None);
         // Returns -1 (or less than 0): didn't level up
         // If positive, that's the new level they reached
+        // Second tuple value gives the ID of old rank
+        // Third tuple value gives the ID of new rank
 
-        if let Some(item) = res {
-            out = item.get(0).unwrap();
+        if let Some(row) = res {
+            let mut old_rank_id: Option<u64> = None;
+            let mut new_rank_id: Option<u64> = None;
+
+            if let Some(old_rank_id_row) = row.get(1) {
+                let old_rank_id_dec: rust_decimal::Decimal = old_rank_id_row;
+                old_rank_id = old_rank_id_dec.to_u64();
+            }
+            if let Some(new_rank_id_row) = row.get(2) {
+                let new_rank_id_dec: rust_decimal::Decimal = new_rank_id_row;
+                new_rank_id = new_rank_id_dec.to_u64();
+            }
+
+            out = (row.get(0).unwrap(), old_rank_id, new_rank_id);
         }
 
         Ok(out)
@@ -96,6 +110,24 @@ impl Database {
 
         if let Some(item) = res {
             out = (item.get(0).unwrap(), item.get(1).unwrap());
+        }
+
+        Ok(out)
+    }
+
+    pub async fn calculate_level(&self, level: i32) -> Result<i32, Box<dyn std::error::Error>> {
+        let mut conn = self.pool.get().await?;
+        let res = conn.query(
+            "EXEC [Ranking].[CalculateLevel] @level = @P1",
+            &[&level])
+            .await?
+            .into_row()
+            .await?;
+
+        let mut out: i32 = 0;
+
+        if let Some(item) = res {
+            out = item.get(0).unwrap();
         }
 
         Ok(out)
