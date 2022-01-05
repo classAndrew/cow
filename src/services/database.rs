@@ -260,4 +260,43 @@ impl Database {
 
         Ok(out)
     }
+
+    pub async fn set_timeout(&self, server_id: GuildId, timeout: i32) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+        let mut conn = self.pool.get().await?;
+        let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
+        let timeout = Decimal::from_i32(timeout).unwrap();
+        let res = conn.query(
+            "EXEC [Ranking].[SetServerTimeout] @serverid = @P1, @timeout = @P2",
+            &[&server, &timeout])
+            .await?
+            .into_row()
+            .await?;
+
+        let mut out: bool = false;
+
+        if let Some(item) = res {
+            out = item.get(0).unwrap();
+        }
+
+        Ok(out)
+    }
+
+    pub async fn get_timeout(&self, server_id: GuildId) -> Result<i32, Box<dyn std::error::Error + Send + Sync>> {
+        let mut conn = self.pool.get().await?;
+        let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
+        let res = conn.query(
+            "SELECT TOP 1 timeout FROM [Ranking].[Server] WHERE id=@P1",
+            &[&server])
+            .await?
+            .into_row()
+            .await?;
+
+        let mut out: i32 = -1;
+
+        if let Some(item) = res {
+            out = item.get(0).unwrap();
+        }
+
+        Ok(out)
+    }
 }
