@@ -57,6 +57,7 @@ async fn get_role(ctx: &Context, msg: &Message, guild: &Guild, args: &Args) -> O
 #[command]
 #[description = "Add a rank to the configuration."]
 #[only_in(guilds)]
+#[usage = "<level> <role id or name>"]
 #[required_permissions("ADMINISTRATOR")]
 pub async fn add(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let db = db!(ctx);

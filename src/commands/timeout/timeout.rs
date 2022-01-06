@@ -11,6 +11,7 @@ use crate::util::{ to_ms, from_ms };
 
 #[command]
 #[description = "Sets server-wide cooldown for messaging xp gain."]
+#[usage = "<#m#d#s#h> in any order"]
 #[only_in(guilds)]
 #[required_permissions("ADMINISTRATOR")]
 pub async fn set(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
