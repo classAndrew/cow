@@ -1,6 +1,7 @@
 mod models;
 mod commands;
 mod services;
+mod util;
 
 use std::collections::HashSet;
 use commands::{get_framework};
