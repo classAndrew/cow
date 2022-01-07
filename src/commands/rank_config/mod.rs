@@ -10,6 +10,4 @@ use rank_config::*;
 #[summary = "Rank configuration"]
 #[default_command(list)]
 #[commands(list, add, remove)]
-#[only_in(guilds)]
-#[required_permissions("ADMINISTRATOR")]
 struct RankConfig;

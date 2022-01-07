@@ -3,8 +3,10 @@ use serenity::{
     model::{
         channel::Message,
         id::{
-            UserId
-        }
+            UserId,
+            GuildId
+        },
+        user::User
     },
     framework::standard::{
         CommandResult,
@@ -12,34 +14,68 @@ use serenity::{
             command
         },
         Args
-    }
+    },
+    utils::MessageBuilder
 };
 use crate::{Database, db};
 use log::{error};
+
+async fn rank_embed(ctx: &Context, msg: &Message, server_id: &GuildId, user: &User) {
+    let db = db!(ctx);
+
+    let (xp, level) = db.get_xp(server_id.clone(), user.id).await.unwrap();
+    let next_level_xp = db.calculate_level(level).await.unwrap();
+
+    let current_role = db.get_highest_role(server_id.clone(), level).await.unwrap();
+    let mut current_role_str: String = String::from("No role");
+    if let Some(current_role_id) = current_role {
+        current_role_str = format!("Current role: <@&{}>", current_role_id);
+    }
+
+    let mut pfp_url = user.default_avatar_url();
+    if let Some(pfp_custom) = user.avatar_url() {
+        pfp_url = pfp_custom;
+    }
+
+    let mut rank_str = String::from("(Unranked)");
+    if let Some(rank) = db.rank_within_members(server_id.clone(), user.id).await.unwrap() {
+        rank_str = format!("#{}", rank);
+    }
+
+    if let Err(ex) = msg.channel_id.send_message(&ctx.http, |m| {m.embed(|e| {
+        e
+            .title(
+                MessageBuilder::new()
+                    .push_safe(user.name.as_str())
+                    .push("#")
+                    .push(user.discriminator)
+                    .push("'s Ranking")
+                    .build()
+            )
+            .description(current_role_str)
+            .field("XP", format!("{}/{}", xp, next_level_xp), true)
+            .field("Rank", rank_str, true)
+            .thumbnail(pfp_url)
+    })}).await {
+        error!("Failed to send embed: {}", ex);
+    }
+}
 
 #[command]
 #[description = "Get your current rank."]
 #[only_in(guilds)]
 pub async fn rank(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    let db = db!(ctx);
     let other = args.single::<UserId>();
     if let Some(server_id) = msg.guild_id {
-        let content: String;
-
         if let Ok(other_id) = other {
-            let (xp, level) = db.get_xp(server_id, other_id).await.unwrap();
-            let next_level_xp = db.calculate_level(level).await.unwrap();
             if let Ok(other_user) = other_id.to_user(&ctx.http).await {
-                content = format!("{} has {} xp out of {} xp, now at level {}", other_user.name, xp, next_level_xp, level);
+                rank_embed(ctx, msg, &server_id, &other_user).await;
             } else {
-                content = format!("Could not find user...");
+                msg.channel_id.say(&ctx.http, "Could not find user...").await?;
             }
         } else {
-            let (xp, level) = db.get_xp(server_id, msg.author.id).await.unwrap();
-            let next_level_xp = db.calculate_level(level).await.unwrap();
-            content = format!("You have {} xp out of {} xp, now at level {}", xp, next_level_xp, level);
+            rank_embed(ctx, msg, &server_id, &msg.author).await;
         }
-        msg.channel_id.send_message(&ctx.http, |m| {m.content(content)}).await?;
     } else {
         msg.reply(&ctx.http, "This command can only be run in a server.").await?;
     }

@@ -10,7 +10,5 @@ use timeout::*;
 #[summary = "Timeouts"]
 #[default_command(get)]
 #[commands(set, get)]
-#[only_in(guilds)]
-#[required_permissions("ADMINISTRATOR")]
 struct Timeout;
 

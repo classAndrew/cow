@@ -115,6 +115,26 @@ impl Database {
         Ok(out)
     }
 
+    pub async fn get_highest_role(&self, server_id: GuildId, level: i32) -> Result<Option<u64>, Box<dyn std::error::Error>> {
+        let mut conn = self.pool.get().await?;
+        let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
+        let res = conn.query(
+            "SELECT TOP 1 role_id FROM [Ranking].[Role] WHERE server_id = @P1 AND min_level <= @P2 ORDER BY min_level DESC",
+            &[&server, &level])
+            .await?
+            .into_row()
+            .await?;
+
+        let mut out: Option<u64> = None;
+
+        if let Some(item) = res {
+            let id: rust_decimal::Decimal = item.get(0).unwrap();
+            out = id.to_u64();
+        }
+
+        Ok(out)
+    }
+
     pub async fn calculate_level(&self, level: i32) -> Result<i32, Box<dyn std::error::Error>> {
         let mut conn = self.pool.get().await?;
         let res = conn.query(
@@ -193,6 +213,27 @@ impl Database {
             .collect::<Vec<_>>();
 
         Ok(res)
+    }
+
+    pub async fn rank_within_members(&self, server_id: GuildId, user_id: UserId) -> Result<Option<i64>, Box<dyn std::error::Error>> {
+        let mut conn = self.pool.get().await?;
+        let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
+        let user = Decimal::from_u64(*user_id.as_u64()).unwrap();
+        let res = conn.query(
+            "SELECT row_number FROM (SELECT user_id, ROW_NUMBER() OVER (ORDER BY level DESC, xp DESC) AS row_number FROM [Ranking].[Level] WHERE server_id = @P1) mukyu WHERE user_id = @P2",
+            &[&server, &user])
+            .await?
+            .into_row()
+            .await?;
+
+        let mut out: Option<i64> = None;
+
+        if let Some(item) = res {
+            // Apparently it's an i64. Cool.
+            out = item.get(0);
+        }
+
+        Ok(out)
     }
 
     pub async fn get_roles(&self, server_id: GuildId) -> Result<Vec<(String, Option<u64>, i32)>, Box<dyn std::error::Error + Send + Sync>> {
