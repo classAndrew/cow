@@ -8,14 +8,12 @@ use serenity::{
         }
     }
 };
-use crate::{Database, db};
 
 #[command]
 #[description = "Info about this bot."]
 pub async fn info(ctx: &Context, msg: &Message) -> CommandResult {
-    let db = db!(ctx);
-    let version = db.get_db_version().await.unwrap();
-    let content = format!("I don't think, therefore I do not am.\nVersion: {}", version);
+    const VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
+    let content = format!("Cow v{} - A Discord bot written by HelloAndrew and DoggySazHi", VERSION.unwrap_or("<unknown>"));
     msg.channel_id.send_message(&ctx.http, |m| {m.content(content)}).await?;
     Ok(())
 }

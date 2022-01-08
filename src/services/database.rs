@@ -42,23 +42,6 @@ impl Database {
         Ok(Database { pool })
     }
 
-    pub async fn get_db_version(&self) -> Result<String, Box<dyn std::error::Error>> {
-        let mut conn = self.pool.get().await?;
-        let res = conn.simple_query("SELECT @@version")
-            .await?
-            .into_first_result()
-            .await?
-            .into_iter()
-            .map(|row| {
-                let val: &str = row.get(0).unwrap();
-                String::from(val)
-            })
-            .reduce(|a, b| {format!("{}\n{}", a, b)})
-            .unwrap();
-
-        Ok(res)
-    }
-
     pub async fn provide_exp(&self, server_id: GuildId, user_id: UserId) -> Result<(i32, Option<u64>, Option<u64>), Box<dyn std::error::Error + Send + Sync>> {
         let mut conn = self.pool.get().await?;
         let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
