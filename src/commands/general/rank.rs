@@ -53,6 +53,7 @@ async fn rank_embed(ctx: &Context, msg: &Message, server_id: &GuildId, user: &Us
                     .build()
             )
             .description(current_role_str)
+            .field("Level", level, true)
             .field("XP", format!("{}/{}", xp, next_level_xp), true)
             .field("Rank", rank_str, true)
             .thumbnail(pfp_url)
@@ -87,6 +88,7 @@ pub async fn rank(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
 #[description = "Disable/enable experience from being collected in the current channel."]
 #[only_in(guilds)]
 #[required_permissions("ADMINISTRATOR")]
+#[aliases("enablexp")]
 pub async fn disablexp(ctx: &Context, msg: &Message) -> CommandResult {
     let db = db!(ctx);
     if let Some(server_id) = msg.guild_id {
@@ -139,7 +141,7 @@ pub async fn levels(ctx: &Context, msg: &Message) -> CommandResult {
 
         msg.channel_id.send_message(&ctx.http, |m| {
             m.embed(|e|
-                e.title("Top Users")
+                e.title("Top 10 Users")
                     .description(content)
             )}).await?;
     } else {
