@@ -1,6 +1,7 @@
 mod general;
 mod rank_config;
 mod timeout;
+mod ucm;
 
 use std::{collections::HashSet};
 use std::sync::Arc;
@@ -26,6 +27,7 @@ use serenity:: {
 use crate::commands::general::GENERAL_GROUP;
 use crate::commands::rank_config::RANKCONFIG_GROUP;
 use crate::commands::timeout::TIMEOUT_GROUP;
+use crate::commands::ucm::UCM_GROUP;
 
 #[help]
 #[individual_command_tip = "Cow help command\n\n\
@@ -64,5 +66,6 @@ pub fn get_framework(pref: &str, app_id: UserId, owners: HashSet<UserId>) -> Arc
         .group(&GENERAL_GROUP)
         .group(&RANKCONFIG_GROUP)
         .group(&TIMEOUT_GROUP)
+        .group(&UCM_GROUP)
     ));
 }
