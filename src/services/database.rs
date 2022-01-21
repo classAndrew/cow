@@ -15,6 +15,7 @@ use rust_decimal::{
     prelude::FromPrimitive
 };
 use rust_decimal::prelude::ToPrimitive;
+use crate::models::db_models::*;
 
 pub struct Database {
     pool: Pool<ConnectionManager>
@@ -42,7 +43,7 @@ impl Database {
         Ok(Database { pool })
     }
 
-    pub async fn provide_exp(&self, server_id: GuildId, user_id: UserId) -> Result<(i32, Option<u64>, Option<u64>), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn provide_exp(&self, server_id: GuildId, user_id: UserId) -> Result<LevelUp, Box<dyn std::error::Error + Send + Sync>> {
         let mut conn = self.pool.get().await?;
         let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
         let user = Decimal::from_u64(*user_id.as_u64()).unwrap();
@@ -53,11 +54,7 @@ impl Database {
             .into_row()
             .await?;
 
-        let mut out: (i32, Option<u64>, Option<u64>) = (-1, None, None);
-        // Returns -1 (or less than 0): didn't level up
-        // If positive, that's the new level they reached
-        // Second tuple value gives the ID of old rank
-        // Third tuple value gives the ID of new rank
+        let mut out = LevelUp::new();
 
         if let Some(row) = res {
             let mut old_rank_id: Option<u64> = None;
@@ -72,13 +69,17 @@ impl Database {
                 new_rank_id = new_rank_id_dec.to_u64();
             }
 
-            out = (row.get(0).unwrap(), old_rank_id, new_rank_id);
+            out = LevelUp {
+                level: row.get(0).unwrap(),
+                old_rank: old_rank_id,
+                new_rank: new_rank_id
+            };
         }
 
         Ok(out)
     }
 
-    pub async fn get_xp(&self, server_id: GuildId, user_id: UserId) -> Result<(i32, i32), Box<dyn std::error::Error>> {
+    pub async fn get_xp(&self, server_id: GuildId, user_id: UserId) -> Result<Experience, Box<dyn std::error::Error>> {
         let mut conn = self.pool.get().await?;
         let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
         let user = Decimal::from_u64(*user_id.as_u64()).unwrap();
@@ -89,16 +90,19 @@ impl Database {
             .into_row()
             .await?;
 
-        let mut out: (i32, i32) = (0, 0);
+        let mut out = Experience::new();
 
         if let Some(item) = res {
-            out = (item.get(0).unwrap(), item.get(1).unwrap());
+            out = Experience {
+                xp: item.get(0).unwrap(),
+                level: item.get(1).unwrap()
+            };
         }
 
         Ok(out)
     }
 
-    pub async fn get_highest_role(&self, server_id: GuildId, level: i32) -> Result<Option<u64>, Box<dyn std::error::Error>> {
+    pub async fn get_highest_role(&self, server_id: GuildId, level: i32) -> Result<Option<RoleId>, Box<dyn std::error::Error>> {
         let mut conn = self.pool.get().await?;
         let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
         let res = conn.query(
@@ -108,11 +112,11 @@ impl Database {
             .into_row()
             .await?;
 
-        let mut out: Option<u64> = None;
+        let mut out: Option<RoleId> = None;
 
         if let Some(item) = res {
             let id: rust_decimal::Decimal = item.get(0).unwrap();
-            out = id.to_u64();
+            out = id.to_u64().and_then(|u| Option::from(RoleId::from(u)));
         }
 
         Ok(out)
@@ -178,24 +182,36 @@ impl Database {
         Ok(out)
     }
 
-    pub async fn top_members(&self, server_id: GuildId) -> Result<Vec<(u64, i32, i32)>, Box<dyn std::error::Error>> {
+    // Page number is zero-indexed.
+    pub async fn top_members(&self, server_id: GuildId, page: i32) -> Result<(Vec<Member>, i32), Box<dyn std::error::Error + Send + Sync>> {
         let mut conn = self.pool.get().await?;
         let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
+        const ROWS_FETCHED: i32 = 10;
+        let mut offset = page * ROWS_FETCHED;
+        offset = offset.max(0);
         let res = conn.query(
-            "SELECT TOP 10 user_id, level, xp FROM [Ranking].[Level] WHERE server_id = @P1 ORDER BY level DESC, xp DESC",
-            &[&server])
+            "SELECT user_id, level, xp FROM [Ranking].[Level] WHERE server_id = @P1 ORDER BY level DESC, xp DESC OFFSET @P2 ROWS FETCH NEXT @P3 ROWS ONLY; SELECT COUNT(1) FROM [Ranking].[Level] WHERE server_id = @P1",
+            &[&server, &offset, &ROWS_FETCHED])
             .await?
-            .into_first_result()
-            .await?
-            .into_iter()
+            .into_results()
+            .await?;
+
+        let count: i32 = res.get(1).unwrap().get(0).unwrap().get(0).unwrap();
+
+        let members = res.get(0).unwrap().into_iter()
             .map(|row| {
                 let id: rust_decimal::Decimal = row.get(0).unwrap();
-                let value: (u64, i32, i32) = (id.to_u64().unwrap(), row.get(1).unwrap(), row.get(2).unwrap());
-                value
+                Member {
+                    id: UserId::from(id.to_u64().unwrap()),
+                    exp: Experience {
+                        level: row.get(1).unwrap(),
+                        xp: row.get(2).unwrap()
+                    }
+                }
             })
             .collect::<Vec<_>>();
 
-        Ok(res)
+        Ok((members, count))
     }
 
     pub async fn rank_within_members(&self, server_id: GuildId, user_id: UserId) -> Result<Option<i64>, Box<dyn std::error::Error>> {
@@ -219,7 +235,7 @@ impl Database {
         Ok(out)
     }
 
-    pub async fn get_roles(&self, server_id: GuildId) -> Result<Vec<(String, Option<u64>, i32)>, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn get_roles(&self, server_id: GuildId) -> Result<Vec<Rank>, Box<dyn std::error::Error + Send + Sync>> {
         let mut conn = self.pool.get().await?;
         let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
         let res = conn.query(
@@ -231,13 +247,17 @@ impl Database {
             .into_iter()
             .map(|row| {
                 let name: &str = row.get(0).unwrap();
-                let mut id: Option<u64> = None;
+                let mut id: Option<RoleId> = None;
                 if let Some(row) = row.get(1) {
                     let id_dec: rust_decimal::Decimal = row;
-                    id = id_dec.to_u64();
+                    id = id_dec.to_u64().and_then(|u| Option::from(RoleId::from(u)));
                 }
-                let value: (String, Option<u64>, i32) = (String::from(name), id, row.get(2).unwrap());
-                value
+
+                Rank {
+                    name: name.to_string(),
+                    role_id: id,
+                    min_level: row.get(2).unwrap()
+                }
             })
             .collect::<Vec<_>>();
 
@@ -245,13 +265,13 @@ impl Database {
     }
 
     // will also set role 
-    pub async fn add_role(&self, server_id: GuildId, role_name: &String, role_id: RoleId, min_level: i32) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn add_role(&self, server_id: GuildId, role_name: &str, role_id: RoleId, min_level: i32) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
         let mut conn = self.pool.get().await?;
         let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
         let role = Decimal::from_u64(*role_id.as_u64()).unwrap();
         let res = conn.query(
             "EXEC [Ranking].[AddRole] @server_id = @P1, @role_name = @P2, @role_id = @P3, @min_level = @P4",
-            &[&server, role_name, &role, &Decimal::from_i32(min_level).unwrap()])
+            &[&server, &role_name, &role, &Decimal::from_i32(min_level).unwrap()])
             .await?
             .into_row()
             .await?;
@@ -322,5 +342,32 @@ impl Database {
         }
 
         Ok(out)
+    }
+
+    pub async fn get_users(&self, server_id: GuildId) -> Result<Vec<FullMember>, Box<dyn std::error::Error + Send + Sync>> {
+        let mut conn = self.pool.get().await?;
+        let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
+        let res = conn.query(
+            "EXEC [Ranking].[GetAllUsers] @serverid = @P1",
+            &[&server])
+            .await?
+            .into_first_result()
+            .await?
+            .into_iter()
+            .map(|row| {
+                let id: UserId = row.get(0).and_then(|u: rust_decimal::Decimal| u.to_u64()).map(|u| UserId::from(u)).unwrap();
+                let role_id: Option<RoleId> = row.get(3).and_then(|u: rust_decimal::Decimal| u.to_u64()).map(|u| RoleId::from(u));
+                FullMember {
+                    user: id,
+                    exp: Experience {
+                        level: row.get(1).unwrap(),
+                        xp: row.get(2).unwrap()
+                    },
+                    role_id
+                }
+            })
+            .collect::<Vec<_>>();
+
+        Ok(res)
     }
 }

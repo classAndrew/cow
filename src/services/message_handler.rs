@@ -33,20 +33,20 @@ pub async fn non_command(ctx: &Context, msg: &Message) {
             Err(ex) => {
                 error!("Failed providing exp to user: {}", ex)
             },
-            Ok((new_level, old_rank, new_rank)) => {
-                if new_level < 0 {
+            Ok(data) => {
+                if data.level < 0 {
                     return;
                 }
 
-                let mut content = format!("<@{}> leveled up from {} to {}.", msg.author.id.as_u64(), new_level - 1, new_level);
-                if let Some(new_rank_id) = new_rank {
+                let mut content = format!("<@{}> leveled up from {} to {}.", msg.author.id.as_u64(), data.level - 1, data.level);
+                if let Some(new_rank_id) = data.new_rank {
                     content += &*format!("\nYou are now a <@&{}>.", new_rank_id);
 
                     let mut error = false;
                     let guild = msg.guild(&ctx).await.unwrap();
                     let mut member = guild.member(&ctx.http, msg.author.id).await.unwrap();
 
-                    if let Some(old_rank_id) = old_rank {
+                    if let Some(old_rank_id) = data.old_rank {
                         let old_rank = RoleId::from(old_rank_id);
                         if member.roles.contains(&old_rank) {
                             // We know we're in a guild, so an error is probably an API issue.

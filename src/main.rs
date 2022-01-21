@@ -11,7 +11,6 @@ use std::fs;
 use std::sync::Arc;
 use std::env;
 use env_logger::Env;
-use serde_json;
 use serenity::{
     async_trait,
     client::{Client, Context, EventHandler},

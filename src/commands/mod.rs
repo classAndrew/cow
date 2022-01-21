@@ -55,7 +55,7 @@ async fn non_command(ctx: &Context, msg: &Message) {
 }
 
 pub fn get_framework(pref: &str, app_id: UserId, owners: HashSet<UserId>) -> Arc<Box<dyn Framework + Sync + std::marker::Send>> {
-    return Arc::new(Box::new(StandardFramework::new()
+    Arc::new(Box::new(StandardFramework::new()
         .configure(|c| c
             .prefix(pref)
             .on_mention(Some(app_id))
@@ -67,5 +67,5 @@ pub fn get_framework(pref: &str, app_id: UserId, owners: HashSet<UserId>) -> Arc
         .group(&RANKCONFIG_GROUP)
         .group(&TIMEOUT_GROUP)
         .group(&UCM_GROUP)
-    ));
+    ))
 }

@@ -4,7 +4,7 @@ pub fn to_ms<S: Into<String>>(s: S) -> Option<i32> {
     for c in s.into().chars() {
         if c.is_ascii_digit() {
             digits *= 10;
-            digits += char::from(c).to_digit(10).unwrap();
+            digits += c.to_digit(10).unwrap();
         } else {
             ms += match c {
                 's' => digits * 1000,

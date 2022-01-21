@@ -1,8 +1,8 @@
-mod timeout;
+mod timeout_config;
 
 use serenity::framework::standard::macros::group;
 
-use timeout::*;
+use timeout_config::*;
 
 #[group]
 #[prefixes("timeout")]

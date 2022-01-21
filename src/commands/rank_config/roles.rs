@@ -104,7 +104,7 @@ pub async fn remove(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
                     if success {
                         msg.channel_id.say(&ctx.http, format!("Successfully removed <@&{}>.", role_id.as_u64())).await?;
                     } else {
-                        msg.channel_id.say(&ctx.http, format!("A rank didn't exist for this role.")).await?;
+                        msg.channel_id.say(&ctx.http, "A rank didn't exist for this role.".to_string()).await?;
                     }
                 }
                 Err(ex) => {
@@ -134,15 +134,14 @@ pub async fn list(ctx: &Context, msg: &Message) -> CommandResult {
                         .description(
                             items.into_iter()
                                 .map(|i| {
-                                    let (name, role, level) = i;
-                                    let mut content = format!("{}: <no role> at level {}", name, level);
-                                    if let Some(role_id) = role {
-                                        content = format!("{}: <@&{}> at level {}", name, role_id, level);
+                                    let mut content = format!("{}: <no role> at level {}", i.name, i.min_level);
+                                    if let Some(role_id) = i.role_id {
+                                        content = format!("{}: <@&{}> at level {}", i.name, role_id, i.min_level);
                                     }
                                     content
                                 })
                                 .reduce(|a, b| {format!("{}\n{}", a, b)})
-                                .unwrap_or(String::from("No roles are registered on this server."))
+                                .unwrap_or_else(|| "No roles are registered on this server.".to_string())
                         )})}).await {
                     error!("Failed to send message to server: {}", ex);
                 }

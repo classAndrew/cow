@@ -23,10 +23,12 @@ use log::{error};
 async fn rank_embed(ctx: &Context, msg: &Message, server_id: &GuildId, user: &User) {
     let db = db!(ctx);
 
-    let (xp, level) = db.get_xp(server_id.clone(), user.id).await.unwrap();
+    let experience = db.get_xp(*server_id, user.id).await.unwrap();
+    let xp = experience.xp;
+    let level = experience.level;
     let next_level_xp = db.calculate_level(level).await.unwrap();
 
-    let current_role = db.get_highest_role(server_id.clone(), level).await.unwrap();
+    let current_role = db.get_highest_role(*server_id, level).await.unwrap();
     let mut current_role_str: String = String::from("No role");
     if let Some(current_role_id) = current_role {
         current_role_str = format!("Current role: <@&{}>", current_role_id);
@@ -38,7 +40,7 @@ async fn rank_embed(ctx: &Context, msg: &Message, server_id: &GuildId, user: &Us
     }
 
     let mut rank_str = String::from("(Unranked)");
-    if let Some(rank) = db.rank_within_members(server_id.clone(), user.id).await.unwrap() {
+    if let Some(rank) = db.rank_within_members(*server_id, user.id).await.unwrap() {
         rank_str = format!("#{}", rank);
     }
 
@@ -96,14 +98,14 @@ pub async fn disablexp(ctx: &Context, msg: &Message) -> CommandResult {
         match db.toggle_channel_xp(server_id, msg.channel_id).await {
             Ok(toggle) => {
                 if toggle {
-                    content = format!("Disabled");
+                    content = "Disabled".to_string();
                 } else {
-                    content = format!("Enabled");
+                    content = "Enabled".to_string();
                 }
                 content += &*format!(" collecting experience in <#{}>.", msg.channel_id.as_u64());
             },
             Err(ex) => {
-                content = format!("Failed to toggle channel xp status.");
+                content = "Failed to toggle channel xp status.".to_string();
                 error!("Failed to toggle channel xp status: {}", ex);
             }
         }
@@ -119,31 +121,37 @@ pub async fn disablexp(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 #[description = "Get the current rankings in the server."]
 #[only_in(guilds)]
-pub async fn levels(ctx: &Context, msg: &Message) -> CommandResult {
+pub async fn levels(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let db = db!(ctx);
     if let Some(server_id) = msg.guild_id {
-        let content: String;
-        match db.top_members(server_id).await {
+        let page = args.single::<i32>().unwrap_or(1).max(1);
+        match db.top_members(server_id, page - 1).await {
             Ok(users) => {
-               content = users.into_iter()
-                   .map(|u| {
-                       let (id, level, xp) = u;
-                       format!("<@{}> - Level {}, {} xp", id, level, xp)
-                   })
-                   .reduce(|a, b| {format!("{}\n{}", a, b)})
-                   .unwrap_or(String::from("Nobody is ranked in this server."))
+                let (members, user_count) = users;
+                let pages = (user_count / 10) + ((user_count % 10 != 0) as i32); // Divide, then round if not perfect division
+
+                let content = members.into_iter()
+                    .enumerate()
+                    .into_iter()
+                    .map(|o| {
+                        let (index, member) = o;
+                        format!("`#{}` <@{}> - Level {}, {} xp", (index as i32) + 10 * (page - 1) + 1, member.id, member.exp.level, member.exp.xp)
+                    })
+                    .reduce(|a, b| {format!("{}\n{}", a, b)})
+                    .unwrap_or_else(|| "There is nothing on this page.".to_string());
+                msg.channel_id.send_message(&ctx.http, |m| {
+                    m.embed(|e|
+                        e
+                            .title("Top Users")
+                            .description(content)
+                            .footer(|e| e.text(format!("Page {}/{}", page, pages)))
+                    )}).await?;
             },
             Err(ex) => {
-                content = format!("Failed to get rankings.");
+                msg.channel_id.say(&ctx.http, "Failed to get rankings.".to_string()).await?;
                 error!("Failed to get rankings: {}", ex);
             }
         }
-
-        msg.channel_id.send_message(&ctx.http, |m| {
-            m.embed(|e|
-                e.title("Top 10 Users")
-                    .description(content)
-            )}).await?;
     } else {
         msg.reply(&ctx.http, "This command can only be run in a server.").await?;
     }
