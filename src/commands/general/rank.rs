@@ -126,11 +126,8 @@ pub async fn levels(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
     if let Some(server_id) = msg.guild_id {
         let page = args.single::<i32>().unwrap_or(1).max(1);
         match db.top_members(server_id, page - 1).await {
-            Ok(users) => {
-                let (members, user_count) = users;
-                let pages = (user_count / 10) + ((user_count % 10 != 0) as i32); // Divide, then round if not perfect division
-
-                let content = members.into_iter()
+            Ok(pagination) => {
+                let content = pagination.members.into_iter()
                     .enumerate()
                     .into_iter()
                     .map(|o| {
@@ -144,7 +141,7 @@ pub async fn levels(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
                         e
                             .title("Top Users")
                             .description(content)
-                            .footer(|e| e.text(format!("Page {}/{}", page, pages)))
+                            .footer(|e| e.text(format!("Page {}/{}", page, pagination.last_page)))
                     )}).await?;
             },
             Err(ex) => {

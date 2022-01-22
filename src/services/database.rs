@@ -183,7 +183,7 @@ impl Database {
     }
 
     // Page number is zero-indexed.
-    pub async fn top_members(&self, server_id: GuildId, page: i32) -> Result<(Vec<Member>, i32), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn top_members(&self, server_id: GuildId, page: i32) -> Result<MemberPagination, Box<dyn std::error::Error + Send + Sync>> {
         let mut conn = self.pool.get().await?;
         let server = Decimal::from_u64(*server_id.as_u64()).unwrap();
         const ROWS_FETCHED: i32 = 10;
@@ -211,7 +211,13 @@ impl Database {
             })
             .collect::<Vec<_>>();
 
-        Ok((members, count))
+        let pages = (count / ROWS_FETCHED) + ((count % ROWS_FETCHED != 0) as i32); // Divide, then round if not perfect division
+
+        Ok(MemberPagination {
+            members,
+            current_page: page,
+            last_page: pages
+        })
     }
 
     pub async fn rank_within_members(&self, server_id: GuildId, user_id: UserId) -> Result<Option<i64>, Box<dyn std::error::Error>> {

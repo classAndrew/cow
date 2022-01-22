@@ -5,7 +5,8 @@ mod ucm;
 
 use std::{collections::HashSet};
 use std::sync::Arc;
-use serenity::framework::standard::{CommandResult, help_commands, Args};
+use log::error;
+
 use serenity:: {
     model::{
         id::UserId,
@@ -14,11 +15,12 @@ use serenity:: {
     framework:: {
         Framework,
         standard::{
-            StandardFramework,
             macros::{
                 hook,
                 help
-            }, HelpOptions, CommandGroup
+            },
+            buckets::LimitedFor,
+            StandardFramework, HelpOptions, CommandGroup, CommandResult, help_commands, Args, DispatchError
         }
     },
     client::Context
@@ -54,7 +56,18 @@ async fn non_command(ctx: &Context, msg: &Message) {
     crate::message_handler::non_command(ctx, msg).await;
 }
 
-pub fn get_framework(pref: &str, app_id: UserId, owners: HashSet<UserId>) -> Arc<Box<dyn Framework + Sync + std::marker::Send>> {
+#[hook]
+async fn on_error(ctx: &Context, msg: &Message, error: DispatchError) {
+    if let DispatchError::Ratelimited(info) = error {
+        if info.is_first_try {
+            if let Err(ex) = msg.channel_id.say(&ctx.http, &format!("This command is rate-limited, please try this again in {} seconds.", info.as_secs())).await {
+                error!("Failed to send rate-limit message: {}", ex);
+            }
+        }
+    }
+}
+
+pub async fn get_framework(pref: &str, app_id: UserId, owners: HashSet<UserId>) -> Arc<Box<dyn Framework + Sync + std::marker::Send>> {
     Arc::new(Box::new(StandardFramework::new()
         .configure(|c| c
             .prefix(pref)
@@ -62,6 +75,10 @@ pub fn get_framework(pref: &str, app_id: UserId, owners: HashSet<UserId>) -> Arc
             .owners(owners)
         )
         .normal_message(non_command)
+        .on_dispatch_error(on_error)
+        .bucket("diagnostics", |b| b.limit(2).time_span(15 * 60) // 15 minute delay for scan and fix.
+            .limit_for(LimitedFor::Guild)
+            .await_ratelimits(0)).await  // Don't delay, force them to re-execute since we don't want to hang the bot
         .help(&COW_HELP)
         .group(&GENERAL_GROUP)
         .group(&RANKCONFIG_GROUP)

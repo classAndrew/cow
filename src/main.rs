@@ -86,7 +86,7 @@ async fn main() -> std::io::Result<()> {
 
     let token = config.token;
     let (app_id, owners) = fetch_bot_info(&token).await;
-    let framework = get_framework(&config.cmd_prefix, app_id, owners);
+    let framework = get_framework(&config.cmd_prefix, app_id, owners).await;
 
     let event_handler = Handler {
         framework: framework.clone(),
