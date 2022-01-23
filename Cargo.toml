@@ -17,7 +17,7 @@ bb8 = "0.7"
 bb8-tiberius = "0.7"
 rust_decimal = "1.19"
 rust_decimal_macros = "1.19"
-reqwest = { version = "0.11", features = ["json"] }
+reqwest = { version = "0.11", features = ["json", "cookies"] }
 
 [dependencies.serenity]
 default-features = false
