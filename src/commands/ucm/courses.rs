@@ -1,4 +1,3 @@
-use chrono::Datelike;
 use log::error;
 use serenity::{
     client::Context,
@@ -12,19 +11,46 @@ use serenity::{
         }, Args
     }
 };
-use crate::commands::ucm::course_models::CourseList;
+use chrono::Datelike;
+use crate::commands::ucm::course_models::{CourseList};
 
 #[command]
 #[description = "Get the course list for a major"]
+#[usage = "<semester> <major>"]
 #[only_in(guilds)]
 pub async fn courses(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    // setting the session cookies
-    let term_url = "https://reg-prod.ec.ucmerced.edu/StudentRegistrationSsb/ssb/term/search?mode=courseSearch&term=202210&studyPath=&studyPathText=&startDatepicker=&endDatepicker=";
-    let search_url = "https://reg-prod.ec.ucmerced.edu/StudentRegistrationSsb/ssb/courseSearch/courseSearch";
-
     let client = reqwest::Client::builder()
         .cookie_store(true)
         .build()?;
+    
+    let term = match args.single::<String>() {
+        Ok(selected_sem) => {
+            let now = chrono::Utc::now();
+            let sem_code = match selected_sem.to_lowercase().as_str() {
+                "fall" => "10",
+                "spring" => "20",
+                "summer" => "30",
+                _ => "00"
+            };
+
+            format!("{}{}", now.year(), sem_code)
+        },
+
+        Err(_) => {
+            msg.channel_id.say(&ctx.http, "Please use the semester names 'fall', 'spring', or 'summer'.").await?;
+            return Ok(());
+        }
+    };
+
+    // setting the session cookies
+    let term_url = format!("https://reg-prod.ec.ucmerced.edu/StudentRegistrationSsb/ssb/term/search?\
+        mode=courseSearch\
+        &term={}\
+        &studyPath=\
+        &studyPathText=\
+        &startDatepicker=\
+        &endDatepicker=", term);
+    let search_url = "https://reg-prod.ec.ucmerced.edu/StudentRegistrationSsb/ssb/courseSearch/courseSearch";
 
     client.get(term_url).send().await?;
     client.get(search_url).send().await?;
@@ -32,17 +58,16 @@ pub async fn courses(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
     let major = args.single::<String>()
         .unwrap_or("".into())
         .to_uppercase();
-
-    // need to also grab current semester
+    
     let url = format!("https://reg-prod.ec.ucmerced.edu/StudentRegistrationSsb/ssb/courseSearchResults/courseSearchResults?\
         txt_subject={}\
-        &txt_term=202210\
+        &txt_term={}\
         &startDatepicker=\
         &endDatepicker=\
         &pageOffset=0\
         &pageMaxSize=10\
         &sortColumn=subjectDescription\
-        &sortDirection=asc", major);
+        &sortDirection=asc", major, term);
 
     match client.get(url).send().await {
         Ok(response) => {

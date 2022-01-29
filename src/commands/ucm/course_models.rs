@@ -52,3 +52,10 @@ pub struct CourseList {
     pub display_settings: DisplaySettings,
     pub is_plan_by_crn_set_for_term: bool
 }
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all="camelCase")]
+pub struct Semester {
+    pub code: String,
+    pub description: String
+}
