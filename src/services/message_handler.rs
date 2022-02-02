@@ -1,9 +1,8 @@
 use serenity::{
     client::Context,
-    model::channel::Message
+    model::{channel::Message, id::{RoleId, GuildId}, guild::Member}
 };
 use log::error;
-use serenity::model::id::RoleId;
 use crate::{Database, db};
 
 pub async fn message(_: &Context, _msg: &Message) {
@@ -73,6 +72,27 @@ pub async fn non_command(ctx: &Context, msg: &Message) {
                     )).await {
                         error!("Error sending level-up message: {}", ex2)
                 };
+            }
+        }
+    }
+}
+
+pub async fn on_join(ctx: &Context, guild_id: &GuildId, new_member: &Member) {
+    if new_member.user.bot {
+        return;
+    }
+
+    let db = db!(ctx);
+    let mut member = new_member.clone();
+
+    let experience = db.get_xp(*guild_id, member.user.id).await.unwrap();
+    let current_role = db.get_highest_role(*guild_id, experience.level).await.unwrap();
+    if let Some(current_role_id) = current_role {
+        if let Err(ex) = member.add_role(&ctx.http, current_role_id).await {
+            error!("Failed to add role for server {}: {}", guild_id, ex);
+            if let Err(ex2) = member.user.direct_message(&ctx.http, |m|
+                m.content("I tried to re-add your roles, but the server didn't let me. Sorry~")).await {
+                error!("Failed to send error message to user {}: {}", member.user.id, ex2);
             }
         }
     }

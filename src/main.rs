@@ -14,10 +14,11 @@ use env_logger::Env;
 use serenity::{
     async_trait,
     client::{Client, Context, EventHandler},
-    model::{channel::Message, gateway::Ready, interactions::Interaction, id::UserId},
+    model::{channel::Message, gateway::Ready, interactions::Interaction, id::{UserId, GuildId}, guild::Member},
     http::Http
 };
 use log::{error, info};
+use serenity::client::bridge::gateway::GatewayIntents;
 use serenity::framework::Framework;
 
 struct Handler {
@@ -27,6 +28,10 @@ struct Handler {
 
 #[async_trait]
 impl EventHandler for Handler {
+    async fn guild_member_addition(&self, ctx: Context, guild_id: GuildId, new_member: Member) {
+        message_handler::on_join(&ctx, &guild_id, &new_member).await;
+    }
+
     async fn message(&self, ctx: Context, msg: Message) {
         message_handler::message(&ctx, &msg).await;
     }
@@ -99,6 +104,7 @@ async fn main() -> std::io::Result<()> {
         .event_handler(event_handler)
         .application_id(*app_id.as_u64())
         .framework_arc(framework)
+        .intents(GatewayIntents::all())
         .await
         .expect("Discord failed to initialize");
 
