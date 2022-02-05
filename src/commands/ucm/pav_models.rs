@@ -45,17 +45,17 @@ impl From<chrono::Weekday> for Day {
     }
 }
 
-impl TryFrom<&str> for Day {
+impl TryFrom<&String> for Day {
     type Error = ();
-    fn try_from(v: &str) -> Result<Self, Self::Error> {
-        match v.to_lowercase().as_str() {
-            "sunday" => Ok(Day::Sunday),
-            "monday" => Ok(Day::Monday),
-            "tuesday" => Ok(Day::Tuesday),
-            "wednesday" => Ok(Day::Wednesday),
-            "thursday" => Ok(Day::Thursday),
-            "friday" => Ok(Day::Friday),
-            "saturday" => Ok(Day::Saturday),
+    fn try_from(v: &String) -> Result<Self, Self::Error> {
+        match &v.to_lowercase()[..2] {
+            "su" => Ok(Day::Sunday),
+            "mo" => Ok(Day::Monday),
+            "tu" => Ok(Day::Tuesday),
+            "we" => Ok(Day::Wednesday),
+            "th" => Ok(Day::Thursday),
+            "fr" => Ok(Day::Friday),
+            "sa" => Ok(Day::Saturday),
             &_ => Err(())
         }
     }

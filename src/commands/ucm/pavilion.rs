@@ -13,6 +13,7 @@ use serenity::{
 };
 use crate::commands::ucm::pav_models::*;
 use log::error;
+use serenity::framework::standard::Args;
 
 // Probably can be hard-coded to be 61bd7ecd8c760e0011ac0fac.
 async fn fetch_pavilion_company_info(client: &Client) -> Result<Company, Box<dyn std::error::Error + Send + Sync>> {
@@ -64,10 +65,30 @@ async fn fetch_pavilion_menu(client: &Client, company: &Company, category: &str,
 #[command]
 #[description = "Get the current menu at the UCM Pavilion."]
 #[aliases("pav")]
-pub async fn pavilion(ctx: &Context, msg: &Message) -> CommandResult {
+pub async fn pavilion(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let date = chrono::offset::Local::now();
-    let (day, meal) = PavilionTime::schedule(&date);
-    let title = format!("{} at the Pavilion for {}", meal, day);
+    let (mut day, mut meal) = PavilionTime::schedule(&date);
+
+    let mut custom_meal = String::new();
+    while !args.is_empty() {
+        let input = args.single::<String>().unwrap();
+        if let Ok(input_day) = Day::try_from(&input) {
+            day = input_day;
+        } else {
+            if !custom_meal.is_empty() {
+                custom_meal += " ";
+            }
+            custom_meal += &*input;
+        }
+    }
+    let title: String;
+    if !custom_meal.is_empty() {
+        meal = Meal::Other(custom_meal);
+        title = format!("Custom Category at the Pavilion for {}", day);
+    } else {
+        title = format!("{} at the Pavilion for {}", meal, day);
+    }
+
     let mut message = msg.channel_id.send_message(&ctx.http, |m| m.embed(|e| {
         e
             .title(&title)

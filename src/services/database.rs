@@ -198,7 +198,7 @@ impl Database {
 
         let count: i32 = res.get(1).unwrap().get(0).unwrap().get(0).unwrap();
 
-        let members = res.get(0).unwrap().into_iter()
+        let members = res.get(0).unwrap().iter()
             .map(|row| {
                 let id: rust_decimal::Decimal = row.get(0).unwrap();
                 Member {
@@ -361,8 +361,8 @@ impl Database {
             .await?
             .into_iter()
             .map(|row| {
-                let id: UserId = row.get(0).and_then(|u: rust_decimal::Decimal| u.to_u64()).map(|u| UserId::from(u)).unwrap();
-                let role_id: Option<RoleId> = row.get(3).and_then(|u: rust_decimal::Decimal| u.to_u64()).map(|u| RoleId::from(u));
+                let id: UserId = row.get(0).and_then(|u: rust_decimal::Decimal| u.to_u64()).map(UserId::from).unwrap();
+                let role_id: Option<RoleId> = row.get(3).and_then(|u: rust_decimal::Decimal| u.to_u64()).map(RoleId::from);
                 FullMember {
                     user: id,
                     exp: Experience {

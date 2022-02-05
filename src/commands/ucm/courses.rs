@@ -55,7 +55,7 @@ pub async fn courses(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
     client.get(search_url).send().await?;
 
     let major = args.single::<String>()
-        .unwrap_or("".into())
+        .unwrap_or_else(|_| "".into())
         .to_uppercase();
     
     let url = format!("https://reg-prod.ec.ucmerced.edu/StudentRegistrationSsb/ssb/courseSearchResults/courseSearchResults?\
@@ -80,9 +80,9 @@ pub async fn courses(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
                                 .description(format!("For major: {}", major));
 
                             for course in course_list.data {
-                                let title = course.course_title.unwrap_or("No Title".into());
-                                e.field(format!("{} {}-{}", major, course.course_number.unwrap_or("000".into()), title), 
-                                    course.course_description.unwrap_or("No description".into())+"...", false);
+                                let title = course.course_title.unwrap_or_else(|| "No Title".into());
+                                e.field(format!("{} {}-{}", major, course.course_number.unwrap_or_else(|| "000".into()), title),
+                                    course.course_description.unwrap_or_else(|| "No description".into())+"...", false);
                             }
 
                             e
