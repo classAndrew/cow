@@ -16,7 +16,6 @@ use crate::commands::ucm::libcal_models::Calendar;
 
 #[command]
 #[description = "Get the hours for the Kolligian Library."]
-#[only_in(guilds)]
 pub async fn library(ctx: &Context, msg: &Message) -> CommandResult {
     let date = chrono::offset::Local::now();
     let url = format!("https://api3.libcal.com/api_hours_grid.php?iid=4052&lid=0&format=json&date={}-{:0>2}-{:0>2}", date.year(), date.month(), date.day());

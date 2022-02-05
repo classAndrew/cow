@@ -17,7 +17,6 @@ use crate::commands::ucm::course_models::{CourseList};
 #[command]
 #[description = "Get the course list for a major"]
 #[usage = "<semester> <major>"]
-#[only_in(guilds)]
 pub async fn courses(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let client = reqwest::Client::builder()
         .cookie_store(true)
