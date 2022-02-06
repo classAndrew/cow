@@ -1,7 +1,6 @@
 use serde::Deserialize;
 use std::convert::{TryFrom, From};
 use std::fmt::{Display, Formatter};
-use std::ops::Range;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use chrono::{Datelike, DateTime, Local, NaiveTime, Weekday};
@@ -189,21 +188,13 @@ impl PavilionTime {
     #[inline(always)]
     pub fn breakfast_end() -> NaiveTime { NaiveTime::from_hms(10, 30, 0) }
     #[inline(always)]
-    pub fn breakfast_weekday() -> Range<NaiveTime> { PavilionTime::breakfast_weekday_start()..PavilionTime::breakfast_end() }
-    #[inline(always)]
-    pub fn breakfast_weekend() -> Range<NaiveTime> { PavilionTime::breakfast_weekend_start()..PavilionTime::breakfast_end() }
-    #[inline(always)]
     pub fn lunch_start() -> NaiveTime { NaiveTime::from_hms(11, 0, 0) }
     #[inline(always)]
     pub fn lunch_end() -> NaiveTime { NaiveTime::from_hms(15, 0, 0) }
     #[inline(always)]
-    pub fn lunch() -> Range<NaiveTime> { PavilionTime::lunch_start()..PavilionTime::lunch_end() }
-    #[inline(always)]
     pub fn dinner_start() -> NaiveTime { NaiveTime::from_hms(16, 0, 0) }
     #[inline(always)]
     pub fn dinner_end() -> NaiveTime { NaiveTime::from_hms(21, 0, 0) }
-    #[inline(always)]
-    pub fn dinner() -> Range<NaiveTime> { PavilionTime::dinner_start()..PavilionTime::dinner_end() }
 
 
     pub fn next_meal(datetime: &DateTime<Local>) -> (Day, Meal) {

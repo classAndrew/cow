@@ -64,6 +64,14 @@ async fn fetch_pavilion_menu(client: &Client, company: &Company, category: &str,
 async fn print_pavilion_times(ctx: &Context, msg: &Message) -> Result<(), Error> {
     msg.channel_id.send_message(&ctx.http, |m| m.embed(|e| e
         .title("Pavilion Times")
+        .field("Weekdays", format!("Breakfast: {} - {}\nLunch: {} - {}\nDinner: {} - {}",
+            PavilionTime::breakfast_weekday_start().format("%l:%M %p"), PavilionTime::breakfast_end().format("%l:%M %p"),
+            PavilionTime::lunch_start().format("%l:%M %p"), PavilionTime::lunch_end().format("%l:%M %p"),
+            PavilionTime::dinner_start().format("%l:%M %p"), PavilionTime::dinner_end().format("%l:%M %p")), false)
+        .field("Weekdays", format!("Breakfast: {} - {}\nLunch: {} - {}\nDinner: {} - {}",
+            PavilionTime::breakfast_weekend_start().format("%l:%M %p"), PavilionTime::breakfast_end().format("%l:%M %p"),
+            PavilionTime::lunch_start().format("%l:%M %p"), PavilionTime::lunch_end().format("%l:%M %p"),
+            PavilionTime::dinner_start().format("%l:%M %p"), PavilionTime::dinner_end().format("%l:%M %p")), false)
     )).await?;
 
     Ok(())
@@ -77,7 +85,7 @@ pub async fn pavilion(ctx: &Context, msg: &Message, mut args: Args) -> CommandRe
     let (mut day, mut meal) = PavilionTime::next_meal(&date);
 
     let mut custom_meal = String::new();
-/*
+
     if args.len() == 1 {
         // Peek at first element to check if it's asking for the hours.
         let input_lower = args.parse::<String>().unwrap().to_lowercase();
@@ -85,7 +93,7 @@ pub async fn pavilion(ctx: &Context, msg: &Message, mut args: Args) -> CommandRe
             print_pavilion_times(ctx, msg).await?;
             return Ok(())
         }
-    }*/
+    }
 
     while !args.is_empty() {
         let input = args.single::<String>().unwrap();
