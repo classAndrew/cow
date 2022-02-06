@@ -1,15 +1,14 @@
 use reqwest::{Url, Client};
 use serenity::{
     client::Context,
-    model::{
-        channel::Message
-    },
+    model::{channel::Message},
     framework::standard::{
         CommandResult,
         macros::{
             command
         }
-    }
+    },
+    Error
 };
 use crate::commands::ucm::pav_models::*;
 use log::error;
@@ -62,19 +61,38 @@ async fn fetch_pavilion_menu(client: &Client, company: &Company, category: &str,
     Ok(result.data)
 }
 
+async fn print_pavilion_times(ctx: &Context, msg: &Message) -> Result<(), Error> {
+    msg.channel_id.send_message(&ctx.http, |m| m.embed(|e| e
+        .title("Pavilion Times")
+    )).await?;
+
+    Ok(())
+}
+
 #[command]
 #[description = "Get the current menu at the UCM Pavilion."]
 #[aliases("pav")]
 pub async fn pavilion(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let date = chrono::offset::Local::now();
-    let (mut day, mut meal) = PavilionTime::schedule(&date);
+    let (mut day, mut meal) = PavilionTime::next_meal(&date);
 
     let mut custom_meal = String::new();
+/*
+    if args.len() == 1 {
+        // Peek at first element to check if it's asking for the hours.
+        let input_lower = args.parse::<String>().unwrap().to_lowercase();
+        if input_lower.contains("time") || input_lower.contains("hour") {
+            print_pavilion_times(ctx, msg).await?;
+            return Ok(())
+        }
+    }*/
+
     while !args.is_empty() {
         let input = args.single::<String>().unwrap();
         if let Ok(input_day) = Day::try_from(&input) {
             day = input_day;
-        } else {
+        }
+        else {
             if !custom_meal.is_empty() {
                 custom_meal += " ";
             }

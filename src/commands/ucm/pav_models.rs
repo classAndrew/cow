@@ -178,30 +178,47 @@ pub struct PavilionTime;
 
 impl PavilionTime {
 
-    pub fn schedule(datetime: &DateTime<Local>) -> (Day, Meal) {
-        let breakfast_weekday_start: NaiveTime = NaiveTime::from_hms(7, 0, 0);
-        let breakfast_end: NaiveTime = NaiveTime::from_hms(10, 30, 0);
-        let _breakfast_weekday: Range<NaiveTime> = breakfast_weekday_start..breakfast_end;
-        let breakfast_weekend_start: NaiveTime = NaiveTime::from_hms(9, 0, 0);
-        let _breakfast_weekend: Range<NaiveTime> = breakfast_weekend_start..breakfast_end;
-        let lunch_start: NaiveTime = NaiveTime::from_hms(11, 0, 0);
-        let lunch_end: NaiveTime= NaiveTime::from_hms(15, 0, 0);
-        let lunch: Range<NaiveTime> = lunch_start..lunch_end;
-        let dinner_start: NaiveTime = NaiveTime::from_hms(16, 0, 0);
-        let dinner_end: NaiveTime = NaiveTime::from_hms(21, 0, 0);
-        let dinner: Range<NaiveTime> = dinner_start..dinner_end;
+    // Turns out from_hms is not a constant function, so... this monstrosity has to occur.
+    // At least inlining is a thing.
+    //#![allow(dead_code)]
 
+    #[inline(always)]
+    pub fn breakfast_weekday_start() -> NaiveTime { NaiveTime::from_hms(7, 0, 0) }
+    #[inline(always)]
+    pub fn breakfast_weekend_start() -> NaiveTime { NaiveTime::from_hms(9, 0, 0) }
+    #[inline(always)]
+    pub fn breakfast_end() -> NaiveTime { NaiveTime::from_hms(10, 30, 0) }
+    #[inline(always)]
+    pub fn breakfast_weekday() -> Range<NaiveTime> { PavilionTime::breakfast_weekday_start()..PavilionTime::breakfast_end() }
+    #[inline(always)]
+    pub fn breakfast_weekend() -> Range<NaiveTime> { PavilionTime::breakfast_weekend_start()..PavilionTime::breakfast_end() }
+    #[inline(always)]
+    pub fn lunch_start() -> NaiveTime { NaiveTime::from_hms(11, 0, 0) }
+    #[inline(always)]
+    pub fn lunch_end() -> NaiveTime { NaiveTime::from_hms(15, 0, 0) }
+    #[inline(always)]
+    pub fn lunch() -> Range<NaiveTime> { PavilionTime::lunch_start()..PavilionTime::lunch_end() }
+    #[inline(always)]
+    pub fn dinner_start() -> NaiveTime { NaiveTime::from_hms(16, 0, 0) }
+    #[inline(always)]
+    pub fn dinner_end() -> NaiveTime { NaiveTime::from_hms(21, 0, 0) }
+    #[inline(always)]
+    pub fn dinner() -> Range<NaiveTime> { PavilionTime::dinner_start()..PavilionTime::dinner_end() }
+
+
+    pub fn next_meal(datetime: &DateTime<Local>) -> (Day, Meal) {
         let day = Day::from(datetime.weekday());
         let time = datetime.time();
 
-        if time < breakfast_end {
+        if time < PavilionTime::breakfast_end() {
             return (day, Meal::Breakfast);
-        } else if lunch.contains(&time) {
+        } else if time < PavilionTime::lunch_end() {
             return (day, Meal::Lunch);
-        } else if dinner.contains(&time) {
+        } else if time < PavilionTime::dinner_end() {
             return (day, Meal::Dinner);
         }
 
+        // Give them the breakfast from the day after.
         (Day::from(datetime.weekday().succ()), Meal::Breakfast)
     }
 }
