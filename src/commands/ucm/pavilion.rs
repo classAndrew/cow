@@ -109,8 +109,13 @@ pub async fn pavilion(ctx: &Context, msg: &Message, mut args: Args) -> CommandRe
     }
     let title: String;
     if !custom_meal.is_empty() {
-        meal = Meal::Other(custom_meal);
-        title = format!("Custom Category at the Pavilion for {}", day);
+        meal = Meal::from(&*custom_meal);
+        if !matches!(meal, Meal::Other(_)) {
+            title = format!("{} at the Pavilion for {}", meal, day);
+        } else {
+            // Do not let the bot print non-validated input.
+            title = format!("Custom Category at the Pavilion for {}", day);
+        }
     } else {
         title = format!("{} at the Pavilion for {}", meal, day);
     }

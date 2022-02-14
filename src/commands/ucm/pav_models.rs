@@ -47,6 +47,11 @@ impl From<chrono::Weekday> for Day {
 impl TryFrom<&String> for Day {
     type Error = ();
     fn try_from(v: &String) -> Result<Self, Self::Error> {
+        if v.len() < 2 {
+            // Can't predict the date off one or zero chars.
+            return Err(());
+        }
+
         match &v.to_lowercase()[..2] {
             "su" => Ok(Day::Sunday),
             "mo" => Ok(Day::Monday),
@@ -144,7 +149,7 @@ pub struct MenuGroups {
 impl MenuGroups {
     fn search(array: &[Group], query: &str) -> Option<String> {
         let query_lower = query.to_lowercase();
-        array.iter().find(|x| x.name.to_lowercase().contains(&query_lower)).map(|s| s.id.clone())
+        array.iter().filter(|x| x.name.to_lowercase().contains(&query_lower)).min_by(|a, b| a.name.len().cmp(&b.name.len()) ).map(|o| o.id.clone())
     }
 
     pub fn get_group(&self, day: Day) -> Option<String> {
