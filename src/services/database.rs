@@ -18,7 +18,7 @@ use rust_decimal::prelude::ToPrimitive;
 use crate::models::db_models::*;
 
 pub struct Database {
-    pool: Pool<ConnectionManager>
+    pub(crate) pool: Pool<ConnectionManager>
 }
 
 impl TypeMapKey for Database {

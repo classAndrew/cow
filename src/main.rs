@@ -3,7 +3,7 @@ mod commands;
 mod services;
 mod util;
 
-use std::collections::HashSet;
+use std::collections::{HashSet};
 use commands::{get_framework};
 use models::config::Config;
 use services::{*, database::Database};
@@ -20,6 +20,9 @@ use serenity::{
 use log::{error, info};
 use serenity::client::bridge::gateway::GatewayIntents;
 use serenity::framework::Framework;
+use serenity::futures::TryFutureExt;
+use serenity::model::channel::{Reaction};
+use serenity::model::id::{ChannelId, MessageId};
 
 struct Handler {
     framework: Arc<Box<dyn Framework + Sync + std::marker::Send>>,
@@ -36,6 +39,19 @@ impl EventHandler for Handler {
         message_handler::message(&ctx, &msg).await;
     }
 
+    async fn reaction_add(&self, ctx: Context, add_reaction: Reaction) {
+        crate::commands::cowboard::cowboard_handler::add_reaction(&ctx, add_reaction.guild_id, add_reaction.message_id);
+    }
+
+    async fn reaction_remove(&self, ctx: Context, removed_reaction: Reaction) {
+        crate::commands::cowboard::cowboard_handler::remove_reaction(&ctx, removed_reaction.guild_id, removed_reaction.message_id);
+    }
+
+    async fn reaction_remove_all(&self, ctx: Context, channel_id: ChannelId, removed_from_message_id: MessageId) {
+        let guild_id = channel_id.message(&ctx.http, removed_from_message_id).await.ok().and_then(|o| o.guild_id);
+        crate::commands::cowboard::cowboard_handler::remove_reaction(&ctx, guild_id, removed_from_message_id);
+    }
+
     async fn ready(&self, ctx: Context, ready: Ready) {
         bot_init::ready(&ctx, &ready).await;
     }
@@ -46,7 +62,7 @@ impl EventHandler for Handler {
 }
 
 async fn init_logger() -> std::io::Result<()> {
-    let env = Env::default().default_filter_or("info");
+    let env = Env::default().default_filter_or("warning");
     env_logger::init_from_env(env);
 
     const VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
