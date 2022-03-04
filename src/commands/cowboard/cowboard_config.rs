@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::fs::OpenOptions;
 use log::error;
 use serenity::{
@@ -15,6 +16,7 @@ use std::path::Path;
 use chrono::prelude::*;
 
 use crate::{Database, db};
+use crate::commands::cowboard::cowboard_db_models::Cowboard;
 use crate::util::{ to_ms, from_ms };
 
 #[command]
@@ -59,7 +61,12 @@ pub async fn emote(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
 
     if let Ok(emoji) = args.single::<ReactionType>() {
         if let Some(guild_id) = msg.guild_id {
-
+            match db.get_cowboard_config(guild_id).await {
+                Ok(config) => {}
+                Err(ex) => {
+                    msg.reply(&ctx.http, "Failed to get").await?;
+                }
+            }
         } else {
             msg.reply(&ctx.http, "This command can only be run in a server.").await?;
         }

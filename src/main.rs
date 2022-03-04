@@ -39,17 +39,17 @@ impl EventHandler for Handler {
         message_handler::message(&ctx, &msg).await;
     }
 
-    async fn reaction_add(&self, ctx: Context, add_reaction: Reaction) {
-        crate::commands::cowboard::cowboard_handler::add_reaction(&ctx, add_reaction.guild_id, add_reaction.message_id);
+    async fn reaction_add(&self, ctx: Context, added_reaction: Reaction) {
+        crate::commands::cowboard::cowboard_handler::add_reaction(&ctx, &added_reaction);
     }
 
     async fn reaction_remove(&self, ctx: Context, removed_reaction: Reaction) {
-        crate::commands::cowboard::cowboard_handler::remove_reaction(&ctx, removed_reaction.guild_id, removed_reaction.message_id);
+        crate::commands::cowboard::cowboard_handler::remove_reaction(&ctx, &removed_reaction);
     }
 
     async fn reaction_remove_all(&self, ctx: Context, channel_id: ChannelId, removed_from_message_id: MessageId) {
         let guild_id = channel_id.message(&ctx.http, removed_from_message_id).await.ok().and_then(|o| o.guild_id);
-        crate::commands::cowboard::cowboard_handler::remove_reaction(&ctx, guild_id, removed_from_message_id);
+        crate::commands::cowboard::cowboard_handler::reaction_remove_all(&ctx, guild_id, removed_from_message_id);
     }
 
     async fn ready(&self, ctx: Context, ready: Ready) {
