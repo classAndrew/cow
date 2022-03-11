@@ -1,6 +1,3 @@
-use std::error::Error;
-use std::fs::OpenOptions;
-use log::error;
 use serenity::{
     framework::standard::{
         macros::command, Args, CommandResult,
@@ -8,16 +5,8 @@ use serenity::{
     model::channel::Message, client::Context
 };
 use serenity::model::channel::ReactionType;
-use serenity::model::guild::{Emoji, Guild};
 use serenity::utils::MessageBuilder;
-use serenity::futures::StreamExt;
-use std::io::prelude::*;
-use std::path::Path;
-use chrono::prelude::*;
-
 use crate::{Database, db};
-use crate::commands::cowboard::cowboard_db_models::Cowboard;
-use crate::util::{ to_ms, from_ms };
 
 #[command]
 #[description = "Get the current settings for the cowboard."]
