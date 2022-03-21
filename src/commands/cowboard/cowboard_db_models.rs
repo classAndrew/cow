@@ -15,7 +15,7 @@ impl Cowboard {
             channel: None,
             add_threshold: 5,
             remove_threshold: 4,
-            emote: ":cow:".to_string(),
+            emote: "🐮".to_string(),
             webhook_id: None,
             webhook_token: None
         }
