@@ -12,6 +12,6 @@ use cowboard_config::*;
 #[description = "Commands for modifying how the cowboard (starboard) functions."]
 #[summary = "Cowboard"]
 #[default_command(info)]
-#[commands(info, emote, min, channel, webhook)]
+#[commands(info, emote, addthreshold, removethreshold, channel, webhook)]
 struct Cowboard;
 

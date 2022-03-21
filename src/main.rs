@@ -20,7 +20,6 @@ use serenity::{
 use log::{error, info};
 use serenity::client::bridge::gateway::GatewayIntents;
 use serenity::framework::Framework;
-use serenity::futures::TryFutureExt;
 use serenity::model::channel::{Reaction};
 use serenity::model::id::{ChannelId, MessageId};
 

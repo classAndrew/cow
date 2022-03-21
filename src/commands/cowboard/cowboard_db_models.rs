@@ -1,5 +1,3 @@
-use serenity::client::Context;
-
 pub struct Cowboard {
     pub id: u64,
     pub channel: Option<u64>,

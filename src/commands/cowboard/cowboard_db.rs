@@ -1,15 +1,9 @@
-use bb8::Pool;
-use bb8_tiberius::ConnectionManager;
-use std::sync::Arc;
 use serenity::{
     model::id::{
-        UserId,
         GuildId,
-        ChannelId, RoleId
-    },
-    prelude::TypeMapKey
+        ChannelId
+    }
 };
-use tiberius::{AuthMethod, Config};
 use rust_decimal::{
     Decimal,
     prelude::FromPrimitive
@@ -73,7 +67,7 @@ impl Database {
         let channel_decimal = Decimal::from_u64(channel.0).unwrap();
         let server_decimal = Decimal::from_u64(guild.0).unwrap();
         let res = conn.query(
-            "SELECT post_id, post_channel_id FROM [Cowboard].[Message] WHERE message_id = @P1, message_channel_id = @P2, guild_id = @P3",
+            "SELECT post_id, post_channel_id FROM [Cowboard].[Message] WHERE message_id = @P1 AND message_channel_id = @P2 AND guild_id = @P3",
             &[&message_decimal, &channel_decimal, &server_decimal])
             .await?
             .into_row()
@@ -106,7 +100,7 @@ impl Database {
         let server = Decimal::from_u64(guild.0).unwrap();
 
         conn.query(
-            "INSERT INTO [Cowboard].[Message] (message_id, message_channel_id, post_id, post_channel_id,, guild) VALUES (@P1, @P2, @P3, @P4, @P5)",
+            "INSERT INTO [Cowboard].[Message] (message_id, message_channel_id, post_id, post_channel_id, guild_id) VALUES (@P1, @P2, @P3, @P4, @P5)",
             &[&message, &channel, &post_message, &post_channel, &server])
             .await?;
 
@@ -120,7 +114,7 @@ impl Database {
         let server = Decimal::from_u64(guild.0).unwrap();
 
         conn.query(
-            "DELETE FROM [Cowboard].[Message] WHERE message_id = @P1, message_channel_id = @P2, guild_id = @P3",
+            "DELETE FROM [Cowboard].[Message] WHERE message_id = @P1 AND message_channel_id = @P2 AND guild_id = @P3",
             &[&message, &channel, &server])
             .await?;
 
