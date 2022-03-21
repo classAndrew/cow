@@ -127,7 +127,7 @@ async fn send_bot_message(ctx: &Context, message: &Message, config: &Cowboard) -
                         .author(|a|
                             a.name(&output_username).icon_url(message.author.face()))
                         .description(&safe_content)
-                        .timestamp(message.timestamp)
+                        .timestamp(&message.timestamp)
                         .footer(|f| f.text(format!("Message ID: {} / User ID: {}", message.id, message.author.id)));
 
                     if !attachments.is_empty() {
@@ -187,7 +187,7 @@ async fn send_webhook_message(ctx: &Context, message: &Message, config: &mut Cow
                         .author(|a|
                             a.name(&output_username).icon_url(message.author.face()))
                         .description(&safe_content)
-                        .timestamp(message.timestamp)
+                        .timestamp(&message.timestamp)
                         .footer(|f| f.text(format!("Message ID: {} / User ID: {}", message.id, message.author.id)));
 
                     if !attachments.is_empty() {
