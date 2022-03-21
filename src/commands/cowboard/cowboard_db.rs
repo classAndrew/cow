@@ -77,7 +77,7 @@ impl Database {
 
         if let Some(item) = res {
             let post_id = item.get(0).and_then(|u: rust_decimal::Decimal| u.to_u64()).unwrap();
-            let post_channel_id = item.get(0).and_then(|u: rust_decimal::Decimal| u.to_u64()).unwrap();
+            let post_channel_id = item.get(1).and_then(|u: rust_decimal::Decimal| u.to_u64()).unwrap();
 
             out = Some(CowboardMessage {
                 message_id: message.0,

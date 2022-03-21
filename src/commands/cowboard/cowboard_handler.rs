@@ -329,15 +329,20 @@ pub async fn remove_reaction(ctx: &Context, removed_reaction: &Reaction) {
     let guild_id = removed_reaction.guild_id.unwrap();
     let db = db!(ctx);
     match db.get_cowboard_config(guild_id).await {
-        Ok(config) => {
+        Ok(mut config) => {
             match removed_reaction.message(&ctx.http).await {
                 Ok(message) => {
                     match count_reactions(ctx, &message, &config).await {
                         Ok(count) => {
+                            let post_message = db.get_cowboard_message(message.id, message.channel_id, guild_id).await;
                             // Pray that the database's constraints work.
                             if count < config.remove_threshold as u64 {
                                 // Unmoo that thing!
                                 remove_moo(ctx, guild_id, removed_reaction.channel_id, removed_reaction.message_id).await;
+                            } else if let Ok(Some(post)) = post_message {
+                                if let Ok(mut post) = ctx.http.get_message(post.post_channel_id, post.post_id).await {
+                                    update_moo(ctx, &message, &mut post, &mut config).await;
+                                }
                             }
                         }
                         Err(ex) => {
@@ -369,24 +374,8 @@ async fn remove_moo(ctx: &Context, guild_id: GuildId, channel_id: ChannelId, mes
     match db.get_cowboard_message(message, channel_id, guild_id).await {
         Ok(message_info) => {
             if let Some(cowboard_message) = message_info {
-                match guild_id.channels(&ctx.http).await {
-                    Ok(channels) => {
-                        if let Some(channel) = channels.get(&ChannelId::from(cowboard_message.post_channel_id)) {
-                            match channel.message(&ctx.http, cowboard_message.post_id).await {
-                                Ok(discord_cowboard_message) => {
-                                    if let Err(ex) = discord_cowboard_message.delete(&ctx.http).await {
-                                        error!("Failed to delete message: {}", ex);
-                                    }
-                                }
-                                Err(ex) => {
-                                    error!("Failed to get message in Discord: {}", ex);
-                                }
-                            }
-                        }
-                    }
-                    Err(ex) => {
-                        error!("Failed to get channels: {}", ex);
-                    }
+                if let Err(ex) = ctx.http.delete_message(cowboard_message.post_channel_id, cowboard_message.post_id).await {
+                    error!("Failed to delete message: {} {} {}", ex, cowboard_message.post_channel_id, cowboard_message.post_id);
                 }
             }
         }

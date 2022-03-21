@@ -21,10 +21,12 @@ pub async fn info(ctx: &Context, msg: &Message) -> CommandResult {
             msg.channel_id.send_message(&ctx.http, |m| m.embed(|e|
                 e
                     .title("Cowboard Settings")
-                    .description("If the emote doesn't display below, you probably want to use a different one!")
+                    .description("If the emote doesn't display properly below, you probably want to use a different one!")
                     .field("Emote", &config.emote, true)
                     .field("Raw Emote", MessageBuilder::new().push_mono(&config.emote).build(), true)
                     .field("Channel", config.channel.map(|o| format!("<#{}>", o)).unwrap_or_else(|| "No Cowboard Channel".to_string()), true)
+                    .field("Add Threshold", MessageBuilder::new().push_mono(config.add_threshold).build(), true)
+                    .field("Remove Threshold", MessageBuilder::new().push_mono(config.remove_threshold).build(), true)
                     .field("Webhook", if config.webhook_id.is_some() && config.webhook_token.is_some() { "Enabled" } else { "Disabled" }, true)
             )).await?;
         } else {
