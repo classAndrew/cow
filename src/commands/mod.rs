@@ -3,6 +3,7 @@ mod rank_config;
 mod timeout;
 mod ucm;
 pub mod cowboard;
+mod music;
 
 use std::{collections::HashSet};
 use std::sync::Arc;
@@ -32,6 +33,7 @@ use crate::commands::rank_config::RANKCONFIG_GROUP;
 use crate::commands::timeout::TIMEOUT_GROUP;
 use crate::commands::ucm::UCM_GROUP;
 use crate::commands::cowboard::COWBOARD_GROUP;
+use crate::commands::music::MUSIC_GROUP;
 
 #[help]
 #[individual_command_tip = "Cow help command\n\n\
@@ -87,5 +89,6 @@ pub async fn get_framework(pref: &str, app_id: UserId, owners: HashSet<UserId>) 
         .group(&TIMEOUT_GROUP)
         .group(&UCM_GROUP)
         .group(&COWBOARD_GROUP)
+        .group(&MUSIC_GROUP)
     ))
 }

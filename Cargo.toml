@@ -21,6 +21,9 @@ reqwest = { version = "0.11.10", features = ["json", "cookies"] }
 num-traits = "0.2.14"
 num-derive = "0.3.3"
 kuchiki = "0.8.1"
+# 0.1.8 is the latest version that works, 0.2 breaks lavalink unlike what documentation says
+songbird = { version = "0.1.8" ,default-features = false, features = ["serenity-rustls", "gateway"] }
+lavalink-rs = { version = "0.8.0", features = ["rustls", "serenity"] }
 
 [dependencies.serenity]
 default-features = false
@@ -35,7 +38,8 @@ features = [
     "standard_framework",
     "utils",
     "rustls_backend",
-    "unstable_discord_api" # For slash commands/components
+    "unstable_discord_api", # For slash commands/components
+    "voice"
 ]
 version = "0.10.10"
 

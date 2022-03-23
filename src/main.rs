@@ -11,6 +11,9 @@ use std::fs;
 use std::sync::Arc;
 use std::env;
 use env_logger::Env;
+use lavalink_rs::gateway::LavalinkEventHandler;
+use lavalink_rs::LavalinkClient;
+use lavalink_rs::model::{TrackFinish, TrackStart};
 use serenity::{
     async_trait,
     client::{Client, Context, EventHandler},
@@ -22,10 +25,30 @@ use serenity::client::bridge::gateway::GatewayIntents;
 use serenity::framework::Framework;
 use serenity::model::channel::{Reaction};
 use serenity::model::id::{ChannelId, MessageId};
+use serenity::prelude::TypeMapKey;
+use songbird::SerenityInit;
 
 struct Handler {
     framework: Arc<Box<dyn Framework + Sync + std::marker::Send>>,
     database: Arc<Database>
+}
+
+struct LavalinkHandler;
+
+struct Lavalink;
+
+impl TypeMapKey for Lavalink {
+    type Value = LavalinkClient;
+}
+
+#[async_trait]
+impl LavalinkEventHandler for LavalinkHandler {
+    async fn track_start(&self, _client: LavalinkClient, event: TrackStart) {
+        info!("Track started!\nGuild: {}", event.guild_id);
+    }
+    async fn track_finish(&self, _client: LavalinkClient, event: TrackFinish) {
+        info!("Track finished!\nGuild: {}", event.guild_id);
+    }
 }
 
 #[async_trait]
@@ -95,7 +118,7 @@ async fn fetch_bot_info(token: &str) -> (UserId, HashSet<UserId>) {
 }
 
 #[tokio::main]
-async fn main() -> std::io::Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>>  {
     if let Err(ex) = init_logger().await {
         error!("Failed to initialize logger: {}", ex);
     }
@@ -119,14 +142,34 @@ async fn main() -> std::io::Result<()> {
         .application_id(*app_id.as_u64())
         .framework_arc(framework)
         .intents(GatewayIntents::all())
+        .register_songbird()
         .await
         .expect("Discord failed to initialize");
+
+    let lavalink_enabled = !config.lavalink_ip.is_empty() && !config.lavalink_password.is_empty();
+
+    if lavalink_enabled {
+        let lava_client = LavalinkClient::builder(*app_id.as_u64())
+            .set_host(config.lavalink_ip)
+            .set_password(
+                config.lavalink_password,
+            )
+            .build(LavalinkHandler)
+            .await?;
+
+        // Scope to not lock forever
+        {
+            let mut data = client.data.write().await;
+            data.insert::<Lavalink>(lava_client);
+        }
+    }
 
     {
         let mut data = client.data.write().await;
         // Should I wrap it with an RwLock? ...it's pooled and async is nice, but...
         data.insert::<Database>(db_clone);
     }
+
 
     if let Err(ex) = client.start().await {
         error!("Discord bot client error: {:?}", ex);
