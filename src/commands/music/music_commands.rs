@@ -8,7 +8,7 @@ use crate::Lavalink;
 
 #[command]
 async fn help(ctx: &Context, msg: &Message) -> CommandResult {
-    msg.channel_id.say(&ctx.http, "Bruh.").await?;
+    msg.channel_id.say(&ctx.http, "`help, join, leave, play, now_playing, skip`").await?;
 
     Ok(())
 }
@@ -26,7 +26,6 @@ async fn join_interactive(ctx: &Context, msg: &Message) -> CommandResult {
         Some(channel) => channel,
         None => {
             msg.reply(&ctx.http, "Join a voice channel first.").await?;
-
             return Ok(());
         }
     };
@@ -158,7 +157,7 @@ async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 }
 
 #[command]
-#[aliases(np)]
+#[aliases(np, nowplaying)]
 async fn now_playing(ctx: &Context, msg: &Message) -> CommandResult {
     let data = ctx.data.read().await;
     let lava_client = data.get::<Lavalink>().unwrap().clone();
