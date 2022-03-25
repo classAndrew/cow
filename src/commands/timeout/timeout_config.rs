@@ -21,7 +21,7 @@ pub async fn set(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult 
         if let Ok(timeout) = args.single::<String>() {
             if let Some(timeout) = to_ms(timeout) {
                 match db.set_timeout(server_id, timeout).await {
-                    Ok(_) => { msg.reply(&ctx.http, format!("Set timeout to {}.", from_ms(timeout))).await?; }
+                    Ok(_) => { msg.reply(&ctx.http, format!("Set timeout to {}.", from_ms(timeout as u64))).await?; }
                     Err(err) => {
                         msg.reply(&ctx.http, "Could not set timeout").await?;
                         error!("Could not set timeout: {}", err);
@@ -47,7 +47,7 @@ pub async fn get(ctx: &Context, msg: &Message) -> CommandResult {
     let db = db!(ctx);
     if let Some(server_id) = msg.guild_id {
         match db.get_timeout(server_id).await {
-            Ok(timeout) => { msg.reply(&ctx.http, format!("The timeout is {}.", from_ms(timeout))).await?; }
+            Ok(timeout) => { msg.reply(&ctx.http, format!("The timeout is {}.", from_ms(timeout as u64))).await?; }
             Err(err) => {
                 msg.reply(&ctx.http, "Could not set timeout").await?;
                 error!("Could not get timeout: {}", err);

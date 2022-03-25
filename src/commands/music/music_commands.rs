@@ -1,4 +1,4 @@
-use lavalink_rs::model::TrackQueue;
+use lavalink_rs::model::{TrackQueue};
 use log::error;
 use regex::Regex;
 use serenity::client::Context;
@@ -9,8 +9,9 @@ use serenity::utils::MessageBuilder;
 use crate::Lavalink;
 
 #[command]
+#[aliases(p)]
 async fn help(ctx: &Context, msg: &Message) -> CommandResult {
-    msg.channel_id.say(&ctx.http, "`help, join, leave, play, now_playing, skip`").await?;
+    msg.channel_id.say(&ctx.http, "`help, join, leave, play, playlist, pause, now_playing, skip, queue`").await?;
 
     Ok(())
 }
@@ -27,7 +28,7 @@ async fn join_interactive(ctx: &Context, msg: &Message) -> CommandResult {
     let connect_to = match channel_id {
         Some(channel) => channel,
         None => {
-            msg.reply(&ctx.http, "Join a voice channel first.").await?;
+            msg.channel_id.say(&ctx.http, "Join a voice channel first.").await?;
             return Ok(());
         }
     };
@@ -38,8 +39,11 @@ async fn join_interactive(ctx: &Context, msg: &Message) -> CommandResult {
 
     match handler {
         Ok(connection_info) => {
-            let data = ctx.data.read().await;
-            let lava_client = data.get::<Lavalink>().unwrap().clone();
+            let lava_client = {
+                let data = ctx.data.read().await;
+                data.get::<Lavalink>().unwrap().clone()
+            };
+
             lava_client.create_session(&connection_info).await?;
             msg.channel_id.say(&ctx.http, format!("Joined <#{}>", connect_to)).await?;
         }
@@ -92,7 +96,7 @@ async fn leave(ctx: &Context, msg: &Message) -> CommandResult {
 async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
     if args.is_empty() {
-        msg.channel_id.say(&ctx.http,"Please enter a query or link.").await?;
+        msg.channel_id.say(&ctx.http, "Please enter a query or link.").await?;
     }
 
     let query = args.message().to_string();
@@ -123,13 +127,10 @@ async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     }
 
     if let Some(_handler) = manager.get(guild_id) {
-        
         let query_information = lava_client.auto_search_tracks(&query).await?;
 
         if query_information.tracks.is_empty() {
-            msg.channel_id
-                .say(&ctx, "Could not find any video of the search query.")
-                .await?;
+            msg.channel_id.say(&ctx, "Could not find any video of the search query.").await?;
             return Ok(());
         }
 
@@ -140,15 +141,102 @@ async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
             return Ok(());
         };
 
-        msg.channel_id
-            .say(
-                &ctx.http,
-                format!(
-                    "Added to queue: {}",
-                    query_information.tracks[0].info.as_ref().unwrap().title
-                ),
-            )
-            .await?;
+        let message = MessageBuilder::new().push("Added to queue: ").push_mono_safe(&query_information.tracks[0].info.as_ref().unwrap().title).build();
+        if let Ok(tracks) = lava_client.get_tracks(query).await {
+            if tracks.tracks.len() > 1 {
+                msg.channel_id.say(&ctx.http, "Note: This seems to be a playlist. If you want to add all tracks at once, use `playlist` instead of `play`.\n".to_string() + &*message).await?;
+                return Ok(())
+            }
+        }
+        msg.channel_id.say(&ctx.http, message).await?;
+    }
+
+    Ok(())
+}
+
+#[command]
+#[only_in(guilds)]
+async fn playlist(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+
+    if let Some(guild_id) = msg.guild_id {
+        if args.is_empty() {
+            msg.channel_id.say(&ctx.http, "Please enter a query or link.").await?;
+            return Ok(())
+        }
+
+        let query = args.message().to_string();
+
+
+
+        let lava_client = {
+            let data = ctx.data.read().await;
+            data.get::<Lavalink>().unwrap().clone()
+        };
+
+        let manager = songbird::get(ctx).await.unwrap().clone();
+
+        if manager.get(guild_id).is_none() {
+            if let Err(ex) = join_interactive(ctx, msg).await {
+                msg.channel_id.say(&ctx.http, "Failed to connect to voice channel; maybe I don't have permissions?").await?;
+                error!("Failed to connect to vc: {}", ex);
+                return Ok(());
+            }
+        }
+
+        if let Some(_handler) = manager.get(guild_id) {
+            match lava_client.get_tracks(&query).await {
+                Ok(tracks) => {
+                    for track in &tracks.tracks {
+                        if let Err(why) = &lava_client.play(guild_id, track.clone()).queue()
+                            .await
+                        {
+                            error!("Failed to queue from playlist: {}", why);
+                        };
+                    }
+
+                    if let Some(info) = &tracks.playlist_info {
+                        if let Some(name) = &info.name {
+                            msg.channel_id.say(&ctx.http, MessageBuilder::new().push("Added to the queue ").push(tracks.tracks.len()).push(" tracks from ").push_mono_safe(name).push(".")).await?;
+                        } else {
+                            msg.channel_id.say(&ctx.http, format!("Added to the queue {} tracks.", tracks.tracks.len())).await?;
+                        }
+                    } else {
+                        msg.channel_id.say(&ctx.http, format!("Added to the queue {} tracks.", tracks.tracks.len())).await?;
+                    }
+                }
+                Err(ex) => {
+                    error!("Failed to load tracks: {}", ex);
+                    msg.channel_id.say(&ctx, "Could not load any tracks from the given input.").await?;
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+#[command]
+#[only_in(guilds)]
+async fn pause(ctx: &Context, msg: &Message) -> CommandResult {
+    if let Some(guild_id) = msg.guild_id {
+        let lava_client = {
+            let data = ctx.data.read().await;
+            data.get::<Lavalink>().unwrap().clone()
+        };
+
+        if let Some(node) = lava_client.nodes().await.get(&guild_id.0) {
+            if node.is_paused {
+                if let Err(ex) = lava_client.set_pause(guild_id, false).await {
+                    error!("Failed to unpause music: {}", ex);
+                } else {
+                    msg.channel_id.say(&ctx.http, "Unpaused the player.").await?;
+                }
+            } else if let Err(ex) = lava_client.pause(guild_id).await {
+                error!("Failed to pause music: {}", ex);
+            } else {
+                msg.channel_id.say(&ctx.http, "Paused the player.").await?;
+            }
+        }
     }
 
     Ok(())
@@ -158,8 +246,11 @@ async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 #[only_in(guilds)]
 #[aliases(np, nowplaying)]
 async fn now_playing(ctx: &Context, msg: &Message) -> CommandResult {
-    let data = ctx.data.read().await;
-    let lava_client = data.get::<Lavalink>().unwrap().clone();
+    let lava_client = {
+        let data = ctx.data.read().await;
+        data.get::<Lavalink>().unwrap().clone()
+    };
+
     let guild_id = msg.guild_id.unwrap();
 
     if let Some(node) = lava_client.nodes().await.get(&guild_id.0) {
@@ -179,11 +270,12 @@ async fn now_playing(ctx: &Context, msg: &Message) -> CommandResult {
                     .title(&info.title)
                     .url(&info.uri)
                     .field("Artist", &info.author, true)
-                    .field("Duration", format!("{}/{}", track.start_time, track.end_time.map_or_else(|| "<unknown>".to_string(), |o| format!("{}", o))), true)
-                    .field("Requested By", match track.requester {
-                        Some(id) => format!("<@{}>", id),
-                        None => "Unknown".to_string()
-                    }, true);
+                    .field("Duration", format!("{}/{}", crate::util::from_ms(info.position), crate::util::from_ms(info.length)), true);
+
+
+                if let Some(requester) = track.requester {
+                    e.field("Requested By", format!("<@{}>", requester), true);
+                }
 
                 if let Some(yt_id) = id {
                     e.thumbnail(format!("https://img.youtube.com/vi/{}/maxresdefault.jpg", yt_id));
@@ -205,19 +297,21 @@ async fn now_playing(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 #[only_in(guilds)]
 async fn skip(ctx: &Context, msg: &Message) -> CommandResult {
-    let data = ctx.data.read().await;
-    let lava_client = data.get::<Lavalink>().unwrap().clone();
+    let lava_client = {
+        let data = ctx.data.read().await;
+        data.get::<Lavalink>().unwrap().clone()
+    };
 
     if let Some(track) = lava_client.skip(msg.guild_id.unwrap()).await {
         msg.channel_id.say(&ctx.http, MessageBuilder::new().push("Skipped: ").push_mono_line_safe(&track.track.info.as_ref().unwrap().title)).await?;
-    } else if let Some(node) = lava_client.nodes().await.get(&msg.guild_id.unwrap().0) {
-        if node.now_playing.is_some() {
-            if let Err(ex) = lava_client.stop(msg.guild_id.unwrap()).await {
-                error!("Failed to stop music: {}", ex);
+
+        // Need to check if it's empty, so we can stop playing (can crash if we don't check)
+        if let Some(node) = lava_client.nodes().await.get(&msg.guild_id.unwrap().0) {
+            if node.now_playing.is_none() {
+                if let Err(ex) = lava_client.stop(msg.guild_id.unwrap()).await {
+                    error!("Failed to stop music: {}", ex);
+                }
             }
-            msg.channel_id.say(&ctx.http, "Stopped the player, since this was the last song.").await?;
-        } else {
-            msg.channel_id.say(&ctx.http, "There is nothing to skip.").await?;
         }
     } else {
         msg.channel_id.say(&ctx.http, "There is nothing to skip.").await?;
@@ -230,9 +324,9 @@ fn generate_line(song: &TrackQueue) -> String {
     let info = song.track.info.as_ref().unwrap();
 
     if let Some(person) = song.requester {
-        format!("{} - {} | ``{}`` Requested by: <@{}>\n\n", info.title, info.author, info.length, person)
+        format!("{} - {} | ``{}`` Requested by: <@{}>\n\n", info.title, info.author, crate::util::from_ms(info.length), person)
     } else {
-        format!("{} - {} | ``{}``\n\n", info.title, info.author, info.length)
+        format!("{} - {} | ``{}``\n\n", info.title, info.author, crate::util::from_ms(info.length))
     }
 }
 
@@ -275,8 +369,11 @@ fn generate_queue(queue: &[TrackQueue]) -> Vec<String> {
 #[only_in(guilds)]
 #[aliases(q)]
 async fn queue(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    let data = ctx.data.read().await;
-    let lava_client = data.get::<Lavalink>().unwrap().clone();
+    let lava_client = {
+        let data = ctx.data.read().await;
+        data.get::<Lavalink>().unwrap().clone()
+    };
+
     let mut page_num = if let Ok(arg_page) = args.single::<usize>() {
         arg_page
     } else {

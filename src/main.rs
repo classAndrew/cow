@@ -11,21 +11,16 @@ use std::fs;
 use std::sync::Arc;
 use std::env;
 use env_logger::Env;
-use lavalink_rs::gateway::LavalinkEventHandler;
-use lavalink_rs::LavalinkClient;
-use lavalink_rs::model::{TrackFinish, TrackStart};
+use lavalink_rs::{LavalinkClient, gateway::LavalinkEventHandler};
 use serenity::{
     async_trait,
-    client::{Client, Context, EventHandler},
-    model::{channel::Message, gateway::Ready, interactions::Interaction, id::{UserId, GuildId}, guild::Member},
-    http::Http
+    client::{Client, Context, EventHandler, bridge::gateway::GatewayIntents},
+    model::{channel::{Message, Reaction}, gateway::Ready, interactions::Interaction, id::{UserId, GuildId, ChannelId, MessageId}, guild::Member},
+    http::Http,
+    framework::Framework,
+    prelude::TypeMapKey
 };
 use log::{error, info};
-use serenity::client::bridge::gateway::GatewayIntents;
-use serenity::framework::Framework;
-use serenity::model::channel::{Reaction};
-use serenity::model::id::{ChannelId, MessageId};
-use serenity::prelude::TypeMapKey;
 use songbird::SerenityInit;
 
 struct Handler {
@@ -33,23 +28,16 @@ struct Handler {
     database: Arc<Database>
 }
 
-struct LavalinkHandler;
-
 struct Lavalink;
 
 impl TypeMapKey for Lavalink {
     type Value = LavalinkClient;
 }
 
+struct LavalinkHandler;
+
 #[async_trait]
-impl LavalinkEventHandler for LavalinkHandler {
-    async fn track_start(&self, _client: LavalinkClient, event: TrackStart) {
-        info!("Track started!\nGuild: {}", event.guild_id);
-    }
-    async fn track_finish(&self, _client: LavalinkClient, event: TrackFinish) {
-        info!("Track finished!\nGuild: {}", event.guild_id);
-    }
-}
+impl LavalinkEventHandler for LavalinkHandler { }
 
 #[async_trait]
 impl EventHandler for Handler {
@@ -149,18 +137,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>  {
     let lavalink_enabled = !config.lavalink_ip.is_empty() && !config.lavalink_password.is_empty();
 
     if lavalink_enabled {
-        let lava_client = LavalinkClient::builder(*app_id.as_u64())
+        match LavalinkClient::builder(*app_id.as_u64())
             .set_host(config.lavalink_ip)
             .set_password(
                 config.lavalink_password,
             )
             .build(LavalinkHandler)
-            .await?;
-
-        // Scope to not lock forever
-        {
-            let mut data = client.data.write().await;
-            data.insert::<Lavalink>(lava_client);
+            .await {
+            Ok(lava_client) => {
+                let mut data = client.data.write().await;
+                data.insert::<Lavalink>(lava_client);
+            }
+            Err(ex) => {
+                error!("Failed to initialize LavaLink. {}", ex);
+            }
         }
     }
 

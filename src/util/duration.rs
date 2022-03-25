@@ -21,7 +21,7 @@ pub fn to_ms<S: Into<String>>(s: S) -> Option<i32> {
     Some(ms as i32)
 }
 
-pub fn from_ms(ms: i32) -> String {
+pub fn from_ms(ms: u64) -> String {
     let mut s = ms / 1000;
     let days = s / 3600 / 24;
     s -= days * 3600 * 24;
@@ -30,5 +30,13 @@ pub fn from_ms(ms: i32) -> String {
     let mins = s / 60;
     s -= mins * 60;
 
-    format!("{}d {}h {}m {}s", days, hours, mins, s)
+    if days != 0 {
+        format!("{}d {}h {}m {}s", days, hours, mins, s)
+    } else if hours != 0 {
+        format!("{}h {}m {}s", hours, mins, s)
+    } else if mins != 0 {
+        format!("{}m {}s", mins, s)
+    } else {
+        format!("{}s", s)
+    }
 }
