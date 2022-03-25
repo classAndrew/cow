@@ -1,8 +1,9 @@
+use lavalink_rs::model::TrackQueue;
 use log::error;
 use regex::Regex;
 use serenity::client::Context;
 use serenity::framework::standard::{CommandResult, Args};
-use serenity::model::channel::Message;
+use serenity::model::channel::{Message};
 use serenity::framework::standard::macros::{command};
 use serenity::utils::MessageBuilder;
 use crate::Lavalink;
@@ -225,17 +226,100 @@ async fn skip(ctx: &Context, msg: &Message) -> CommandResult {
     Ok(())
 }
 
+fn generate_line(song: &TrackQueue) -> String {
+    let info = song.track.info.as_ref().unwrap();
+
+    if let Some(person) = song.requester {
+        format!("{} - {} | ``{}`` Requested by: <@{}>\n\n", info.title, info.author, info.length, person)
+    } else {
+        format!("{} - {} | ``{}``\n\n", info.title, info.author, info.length)
+    }
+}
+
+fn generate_queue(queue: &[TrackQueue]) -> Vec<String> {
+    let mut output: Vec<String> = Vec::new();
+
+    if queue.is_empty() {
+        output.push("There are no songs queued.".to_string());
+    }
+
+    let mut index = 0;
+    while index < queue.len() {
+        let mut page = String::new();
+
+        // Max on one page is 10 just as a hard limit
+        for _ in 1..=10 {
+            if index >= queue.len() {
+                break;
+            }
+
+            let song = &queue[index];
+            index += 1;
+            let next_line = format!("``{}.`` {}", index, generate_line(song));
+
+            if page.len() + next_line.len() > 1024 {
+                index -= 1;
+                break;
+            }
+
+            page.push_str(&*next_line);
+        }
+
+        output.push(page);
+    }
+
+    output
+}
+
 #[command]
 #[only_in(guilds)]
-async fn queue(ctx: &Context, msg: &Message) -> CommandResult {
+#[aliases(q)]
+async fn queue(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let data = ctx.data.read().await;
     let lava_client = data.get::<Lavalink>().unwrap().clone();
+    let mut page_num = if let Ok(arg_page) = args.single::<usize>() {
+        arg_page
+    } else {
+        1
+    };
 
-    if let Some(node) = lava_client.nodes().await.get(&msg.guild_id.unwrap().0) {
+    let guild_id = msg.guild_id.unwrap();
+    if let Some(node) = lava_client.nodes().await.get(&guild_id.0) {
         let queue = &node.queue;
-        for track in queue {
+        let pages = generate_queue(queue);
 
+        if page_num > pages.len() {
+            page_num = pages.len();
+        } else if page_num == 0 {
+            page_num = 1;
         }
+
+        let page = &pages[page_num - 1];
+        let server_name = guild_id.name(&ctx).await;
+
+        msg.channel_id.send_message(&ctx.http, |m| m.embed(|e| {
+            e
+                .author(|a| {
+                    if let Some(server) = server_name {
+                        a.name(format!("Player Queue | Page {}/{} | Playing in {}", page_num, pages.len(), server));
+                    } else {
+                        a.name(format!("Player Queue | Page {}/{}", page_num, pages.len()));
+                    }
+
+                    a
+                })
+                .title("Now Playing")
+                .field("Queued", page, false);
+
+            if let Some(now_playing) = &node.now_playing {
+                e.description(generate_line(now_playing));
+            } else {
+                e.description("Nothing is playing.");
+            }
+
+            e
+        })).await?;
+
     } else {
         msg.channel_id.say(&ctx.http, "Nothing is playing at the moment.").await?;
     }

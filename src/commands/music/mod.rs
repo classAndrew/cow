@@ -9,5 +9,5 @@ use music_commands::*;
 #[description = "Commands for playing music."]
 #[summary = "Music"]
 #[default_command(help)]
-#[commands(help, join, leave, play, now_playing, skip)]
+#[commands(help, join, leave, play, now_playing, skip, queue)]
 struct Music;
