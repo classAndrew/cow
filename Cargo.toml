@@ -1,30 +1,43 @@
 [package]
 name = "cow"
 description = "moo"
-version = "0.1.20"
+version = "0.1.21"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+# JSON parsing
 serde = { version = "1.0.136", features = ["derive"] }
 serde_json = "1.0.79"
+# HTML parsing
+kuchiki = "0.8.1"
+# Async
 tokio = { version = "1.17.0", features = ["macros", "rt-multi-thread"] }
+# Logging
 log = "0.4.14"
 env_logger = "0.9.0"
+# Time
 chrono = "0.4.19"
+# SQL Server
 bb8 = "0.7.1"
 bb8-tiberius = "0.8.0"
+# Decimal data type (for SQL Server)
 rust_decimal = "1.22.0"
 rust_decimal_macros = "1.22.0"
+# HTTP Requests (for many of the UCM commands)
 reqwest = { version = "0.11.10", features = ["json", "cookies"] }
+# Primitive derivation
 num-traits = "0.2.14"
 num-derive = "0.3.3"
-kuchiki = "0.8.1"
+# Music stuff
 # 0.1.8 is the latest version that works, 0.2 breaks lavalink unlike what documentation says
 songbird = { version = "0.1.8" ,default-features = false, features = ["serenity-rustls", "gateway"] }
 lavalink-rs = { version = "0.8.0", features = ["rustls", "serenity"] }
+# Literally in the name
+regex = "1.5.5"
 
+# Discord API
 [dependencies.serenity]
 default-features = false
 features = [
@@ -43,6 +56,7 @@ features = [
 ]
 version = "0.10.10"
 
+# SQL Server
 [dependencies.tiberius]
 version = "0.7.1"
 default-features = false
