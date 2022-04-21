@@ -13,7 +13,7 @@ use rank::*;
 use ban::*;
 
 #[group]
-#[commands(hello, time, info, rank, disablexp, levels, bangenshinplayers, banleagueplayers, banvalorantplayers)]
+#[commands(hello, time, info, rank, disablexp, levels, bangenshinplayers, banleagueplayers, banvalorantplayers, banfortniteplayers)]
 #[description = "General commands for miscellaneous tasks."]
 #[summary = "Basic commands"]
 struct General;

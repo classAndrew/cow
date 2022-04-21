@@ -4,6 +4,9 @@ mod courses;
 mod course_models;
 mod pavilion;
 mod pav_models;
+pub mod course_reminders;
+mod courses_db;
+mod courses_db_models;
 
 use serenity::framework::standard::macros::group;
 

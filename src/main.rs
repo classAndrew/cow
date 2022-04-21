@@ -160,6 +160,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>  {
         data.insert::<Database>(db_clone);
     }
 
+    crate::commands::ucm::course_reminders::check_reminders(client.cache_and_http).await?;
 
     if let Err(ex) = client.start().await {
         error!("Discord bot client error: {:?}", ex);

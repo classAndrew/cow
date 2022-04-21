@@ -21,7 +21,6 @@ async fn banvalorantplayers(ctx: &Context, msg: &Message, args: Args) -> Command
     if args.is_empty() {
         return ban_game_players(ctx, msg, 700136079562375258, "Playing VALORANT? Cringe.").await;
     }
-
     ban_game_players(ctx, msg, 700136079562375258, args.message()).await
 }
 
@@ -36,6 +35,17 @@ async fn bangenshinplayers(ctx: &Context, msg: &Message, args: Args) -> CommandR
     ban_game_players(ctx, msg, 762434991303950386, args.message()).await
 }
 
+#[command]
+#[only_in(guilds)]
+#[required_permissions("BAN_MEMBERS")]
+async fn banfortniteplayers(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    if args.is_empty() {
+        return ban_game_players(ctx, msg, 432980957394370572, "Playing Fortnite??? Cringe. Disgusting. Banned. L bozo. Skill issue.").await;
+    }
+
+    ban_game_players(ctx, msg, 432980957394370572, args.message()).await
+}
+
 async fn ban_game_players(ctx: &Context, msg: &Message, game_id: u64, message: impl AsRef<str>) -> CommandResult {
     if let Some(guild) = msg.guild(&ctx).await {
         let mut degenerates: Vec<u64> = Vec::new();
@@ -47,7 +57,7 @@ async fn ban_game_players(ctx: &Context, msg: &Message, game_id: u64, message: i
                 if let Ok(dm_channel) = presence.user_id.create_dm_channel(&ctx.http).await {
                     dm_channel.say(&ctx.http, "You have been banned for playing haram games.").await?;
                 }
-                guild.ban_with_reason(&ctx.http, presence.user_id, 0, &message).await?;
+                let _ = guild.ban_with_reason(&ctx.http, presence.user_id, 0, &message).await;
             }
         }
 
