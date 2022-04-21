@@ -1,7 +1,7 @@
 mod general;
 mod rank_config;
 mod timeout;
-mod ucm;
+pub mod ucm;
 pub mod cowboard;
 mod music;
 

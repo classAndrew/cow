@@ -1,7 +1,7 @@
 [package]
 name = "cow"
 description = "moo"
-version = "0.1.25"
+version = "0.1.26"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -36,6 +36,8 @@ songbird = { version = "0.1.8", default-features = false, features = ["serenity-
 lavalink-rs = { version = "0.8.0", features = ["rustls", "serenity"] }
 # Literally in the name
 regex = "1.5.5"
+# Wait bruh enums can't be bits?
+bitflags = "1.3.2"
 
 # Discord API
 [dependencies.serenity]

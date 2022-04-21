@@ -85,4 +85,35 @@ impl Database {
 
         Ok(out)
     }
+
+    pub async fn get_class(&self, course_reference_number: i32) -> Result<Option<Class>, Box<dyn std::error::Error + Send + Sync>> {
+        let mut conn = self.pool.get().await?;
+        let res = conn.query(
+            "SELECT id, term, course_number, course_description, course_title, credit_hours, maximum_enrollment, enrollment, seats_available, wait_capacity, wait_available FROM [UniScraper].[UCM].[class] WHERE course_reference_number = @P1",
+            &[&course_reference_number])
+            .await?
+            .into_row()
+            .await?;
+
+        let mut out: Option<Class> = None;
+
+        if let Some(class) = res {
+            out = Some(Class {
+                id: class.get(0).unwrap(),
+                term: class.get(1).unwrap(),
+                course_reference_number,
+                course_number: class.get(2).unwrap(),
+                course_description: class.get(3),
+                course_title: class.get(4),
+                credit_hours: class.get(5).unwrap(),
+                maximum_enrollment: class.get(6).unwrap(),
+                enrollment: class.get(7).unwrap(),
+                seats_available: class.get(8).unwrap(),
+                wait_capacity: class.get(9).unwrap(),
+                wait_available: class.get(10).unwrap()
+            });
+        }
+
+        Ok(out)
+    }
 }
