@@ -1,4 +1,6 @@
 use bitflags::bitflags;
+use num_derive::FromPrimitive;
+use num_traits::FromPrimitive;
 
 pub struct Reminder {
     pub user_id: u64,
@@ -43,6 +45,7 @@ bitflags! {
 }
 
 #[repr(u8)]
+#[derive(FromPrimitive)]
 pub enum MeetingType {
     Lecture = 1,
     Discussion = 2,
@@ -58,13 +61,19 @@ pub enum MeetingType {
     Internship = 12
 }
 
+impl TryFrom<u8> for MeetingType {
+    type Error = ();
+    fn try_from(v: u8) -> Result<Self, Self::Error> {
+        FromPrimitive::from_u8(v).ok_or(())
+    }
+}
+
 pub struct Meeting {
     pub class_id: i32,
     pub begin_time: String,
     pub end_time: String,
     pub begin_date: String,
     pub end_date: String,
-    pub course_title: Option<String>,
     pub building: Option<String>,
     pub building_description: Option<String>,
     pub campus: Option<String>,

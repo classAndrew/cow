@@ -1,6 +1,7 @@
 mod library;
 mod libcal_models;
 mod courses;
+mod courses_old;
 mod course_models;
 mod pavilion;
 mod pav_models;
@@ -14,12 +15,13 @@ use crate::commands::ucm::reminders::REMINDERS_GROUP;
 
 use library::*;
 use courses::*;
+use courses_old::*;
 use pavilion::*;
 
 #[group]
 #[prefixes("ucm", "ucmerced")]
 #[description = "Get information about UC Merced's services and facilities."]
 #[summary = "UC Merced info"]
-#[commands(library, courses, pavilion)]
+#[commands(library, courses, courses_old, pavilion)]
 #[sub_groups(reminders)]
 struct UCM;

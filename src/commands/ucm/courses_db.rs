@@ -119,4 +119,82 @@ impl Database {
 
         Ok(out)
     }
+
+    // Note: class_id is referring to an ID stored in the database, not the CRN. Fetch this through get_class.
+    pub async fn get_professors_for_class(&self, class_id: i32) -> Result<Vec<Professor>, Box<dyn std::error::Error + Send + Sync>> {
+        let mut conn = self.pool.get().await?;
+        let res = conn.query(
+            "SELECT professor.id, rmp_id, last_name, first_name, middle_name, email, department, num_ratings, rating FROM [UniScraper].[UCM].[professor] INNER JOIN [UniScraper].[UCM].[faculty] ON professor.id = faculty.professor_id WHERE class_id = @P1;",
+            &[&class_id])
+            .await?
+            .into_first_result()
+            .await?;
+
+        let mut out: Vec<Professor> = Vec::new();
+
+        for professor in res {
+            let last_name: &str = professor.get(2).unwrap();
+            let first_name: &str = professor.get(3).unwrap();
+            let middle_name: Option<&str> = professor.get(4);
+            let email: Option<&str> = professor.get(5);
+            let department: Option<&str> = professor.get(6);
+            out.push(Professor {
+                id: professor.get(0).unwrap(),
+                rmp_id: professor.get(1),
+                last_name: last_name.to_string(),
+                first_name: first_name.to_string(),
+                middle_name: middle_name.map(|o| o.to_string()),
+                email: email.map(|o| o.to_string()),
+                department: department.map(|o| o.to_string()),
+                num_ratings: professor.get(7).unwrap(),
+                rating: professor.get(8).unwrap()
+            });
+        }
+
+        Ok(out)
+    }
+
+    // Note: class_id is referring to an ID stored in the database, not the CRN. Fetch this through get_class.
+    pub async fn get_meetings_for_class(&self, class_id: i32) -> Result<Vec<Meeting>, Box<dyn std::error::Error + Send + Sync>> {
+        let mut conn = self.pool.get().await?;
+        let res = conn.query(
+            "SELECT begin_time, end_time, begin_date, end_date, building, building_description, campus, campus_description, room, credit_hour_session, hours_per_week, in_session, meeting_type FROM [UniScraper].[UCM].[meeting] WHERE class_id = @P1;",
+            &[&class_id])
+            .await?
+            .into_first_result()
+            .await?;
+
+        let mut out: Vec<Meeting> = Vec::new();
+
+        for meeting in res {
+            let begin_time: &str = meeting.get(0).unwrap();
+            let end_time: &str = meeting.get(1).unwrap();
+            let begin_date: &str = meeting.get(2).unwrap();
+            let end_date: &str = meeting.get(3).unwrap();
+            let building: Option<&str> = meeting.get(4);
+            let building_description: Option<&str> = meeting.get(5);
+            let campus: Option<&str> = meeting.get(6);
+            let campus_description: Option<&str> = meeting.get(7);
+            let room: Option<&str> = meeting.get(8);
+            let meeting_type: u8 = meeting.get(12).unwrap();
+            out.push(Meeting {
+                class_id,
+                begin_time: begin_time.to_string(),
+                end_time: end_time.to_string(),
+                begin_date: begin_date.to_string(),
+                end_date: end_date.to_string(),
+                building: building.map(|o| o.to_string()),
+                building_description: building_description.map(|o| o.to_string()),
+                campus: campus.map(|o| o.to_string()),
+                campus_description: campus_description.map(|o| o.to_string()),
+                room: room.map(|o| o.to_string()),
+                credit_hour_session: meeting.get(9).unwrap(),
+                hours_per_week: meeting.get(10).unwrap(),
+                in_session: Days::from_bits(meeting.get(11).unwrap()).unwrap(),
+                meeting_type: MeetingType::try_from(meeting_type).unwrap()
+            });
+        }
+
+        Ok(out)
+    }
 }

@@ -4,5 +4,7 @@
   "sql_server_port": 1433,
   "sql_server_username": "<SQL Server Login>",
   "sql_server_password": "<SQL Server Password>",
-  "cmd_prefix": "!"
+  "cmd_prefix": "!",
+  "lavalink_ip": "<IP to LavaLink Server>",
+  "lavalink_password": "<Lavalink Password>"
 }
