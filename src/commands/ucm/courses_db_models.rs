@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use bitflags::bitflags;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
@@ -61,6 +62,25 @@ pub enum MeetingType {
     Internship = 12
 }
 
+impl Display for MeetingType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MeetingType::Lecture => write!(f, "Lecture"),
+            MeetingType::Discussion => write!(f, "Discussion"),
+            MeetingType::Lab => write!(f, "Lab"),
+            MeetingType::Fieldwork => write!(f, "Fieldwork"),
+            MeetingType::Seminar => write!(f, "Seminar"),
+            MeetingType::IndividualStudy => write!(f, "Individual Study"),
+            MeetingType::Tutorial => write!(f, "Tutorial"),
+            MeetingType::Studio => write!(f, "Studio"),
+            MeetingType::Practicum => write!(f, "Practicum"),
+            MeetingType::Exam => write!(f, "Exam"),
+            MeetingType::Project => write!(f, "Project"),
+            MeetingType::Internship => write!(f, "Internship")
+        }
+    }
+}
+
 impl TryFrom<u8> for MeetingType {
     type Error = ();
     fn try_from(v: u8) -> Result<Self, Self::Error> {
@@ -70,8 +90,8 @@ impl TryFrom<u8> for MeetingType {
 
 pub struct Meeting {
     pub class_id: i32,
-    pub begin_time: String,
-    pub end_time: String,
+    pub begin_time: Option<String>,
+    pub end_time: Option<String>,
     pub begin_date: String,
     pub end_date: String,
     pub building: Option<String>,

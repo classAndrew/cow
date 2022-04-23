@@ -167,8 +167,8 @@ impl Database {
         let mut out: Vec<Meeting> = Vec::new();
 
         for meeting in res {
-            let begin_time: &str = meeting.get(0).unwrap();
-            let end_time: &str = meeting.get(1).unwrap();
+            let begin_time: Option<&str> = meeting.get(0);
+            let end_time: Option<&str> = meeting.get(1);
             let begin_date: &str = meeting.get(2).unwrap();
             let end_date: &str = meeting.get(3).unwrap();
             let building: Option<&str> = meeting.get(4);
@@ -179,8 +179,8 @@ impl Database {
             let meeting_type: u8 = meeting.get(12).unwrap();
             out.push(Meeting {
                 class_id,
-                begin_time: begin_time.to_string(),
-                end_time: end_time.to_string(),
+                begin_time: begin_time.map(|o| o.to_string()),
+                end_time: end_time.map(|o| o.to_string()),
                 begin_date: begin_date.to_string(),
                 end_date: end_date.to_string(),
                 building: building.map(|o| o.to_string()),
