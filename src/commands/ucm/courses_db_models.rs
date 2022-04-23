@@ -44,9 +44,9 @@ bitflags! {
 
 #[repr(u8)]
 pub enum MeetingType {
-    LECTURE = 1,
-    DISCUSSION = 2,
-    LAB = 3,
+    Lecture = 1,
+    Discussion = 2,
+    Lab = 3,
     Fieldwork = 4,
     Seminar = 5,
     IndividualStudy = 6,

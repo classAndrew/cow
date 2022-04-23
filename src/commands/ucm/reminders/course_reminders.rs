@@ -59,17 +59,16 @@ pub async fn add(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult 
         return Ok(());
     }
 
-    let course_reference_number;
     let mut min_trigger = 1;
     let mut for_waitlist = false;
 
-    match args.single::<i32>() {
-        Ok(value) => { course_reference_number = value; }
+    let course_reference_number = match args.single::<i32>() {
+        Ok(value) => { value }
         Err(_) => {
             msg.channel_id.say(&ctx.http, "You need to pass in a valid CRN for the first value.").await?;
             return Ok(());
         }
-    }
+    };
 
     if !args.is_empty() {
         match args.single::<i32>() {
