@@ -28,7 +28,16 @@ fn fix_time(time: &str) -> String {
     if hour < 12 {
         return format!("{}:{} AM", hour, minute_str);
     }
-    format!("{}:{} PM", hour, minute_str)
+    format!("{}:{} PM", hour - 12, minute_str)
+}
+
+fn is_semester(input: &str) -> i32 {
+    match input.to_lowercase().as_str() {
+        "fall" => 10,
+        "spring" => 20,
+        "summer" => 30,
+        _ => -1
+    }
 }
 
 async fn course_embed(ctx: &Context, msg: &Message, class: &Class) -> CommandResult {
@@ -38,7 +47,7 @@ async fn course_embed(ctx: &Context, msg: &Message, class: &Class) -> CommandRes
 
     msg.channel_id.send_message(&ctx.http, |m| m.embed(|e| {
         e.title(format!("{}: {}", &class.course_number, class.course_title.clone().unwrap_or_else(|| "<unknown class name>".to_string())));
-        e.description("Enrollment and Waitlist are in terms of seats available/seats open/max seats.");
+        e.description("Enrollment and Waitlist are in terms of seats available/seats taken/max seats.");
         e.field("CRN", class.course_reference_number, true);
         e.field("Credit Hours", class.credit_hours, true);
         e.field("Enrollment", format!("{}/{}/{}", class.seats_available, class.enrollment, class.maximum_enrollment), true);
