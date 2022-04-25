@@ -220,6 +220,7 @@ impl Database {
         let mut conn = self.pool.get().await?;
 
         let input = search_query
+            .trim()
             .split(' ')
             .map(|o| o.replace('(', "").replace(')', "").replace('\"', "").replace('\'', "")) // *unqueries your query*
             .map(|o| format!("\"*{}*\"", o)) // Wildcards
