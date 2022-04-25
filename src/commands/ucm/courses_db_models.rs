@@ -32,6 +32,13 @@ pub struct Class {
     pub wait_available: i16
 }
 
+pub struct PartialClass {
+    pub id: i32,
+    pub course_reference_number: i32,
+    pub course_number: String,
+    pub course_title: Option<String>
+}
+
 bitflags! {
     pub struct Days: u8 {
         const BASE = 0;

@@ -197,4 +197,53 @@ impl Database {
 
         Ok(out)
     }
+
+    // Course number is like CSE-031.
+    pub async fn search_class_by_number(&self, course_number: &str, term: i32) -> Result<Vec<PartialClass>, Box<dyn std::error::Error + Send + Sync>> {
+        self.general_class_search(course_number, term,
+                                  "SELECT id, course_reference_number, course_number, course_title \
+                                  FROM UniScraper.UCM.class \
+                                  WHERE term = @P1 AND CONTAINS(course_number, @P2);").await
+    }
+
+    // Course name is like Computer Organization and Assembly.
+    pub async fn search_class_by_name(&self, course_name: &str, term: i32) -> Result<Vec<PartialClass>, Box<dyn std::error::Error + Send + Sync>> {
+        self.general_class_search(course_name, term,
+          "SELECT id, course_reference_number, course_number, course_title FROM \
+                    (SELECT id, course_reference_number, course_number, course_title, term, ROW_NUMBER() \
+                        OVER (PARTITION BY course_title ORDER BY course_reference_number) AS RowNumber \
+                        FROM UniScraper.UCM.class WHERE term = @P1 AND CONTAINS(course_title, @P2)) AS mukyu \
+                    WHERE mukyu.RowNumber = 1;").await
+    }
+
+    async fn general_class_search(&self, search_query: &str, term: i32, sql: &str) -> Result<Vec<PartialClass>, Box<dyn std::error::Error + Send + Sync>> {
+        let mut conn = self.pool.get().await?;
+
+        let input = search_query
+            .split(' ')
+            .map(|o| o.replace("(", "").replace(")", "").replace("\"", "").replace("'", "")) // *unqueries your query*
+            .map(|o| format!("\"*{}*\"", o)) // Wildcards
+            .reduce(|a, b| format!("{} AND {}", a, b))
+            .unwrap();
+
+        let res = conn.query(sql, &[&term, &input])
+            .await?
+            .into_first_result()
+            .await?;
+
+        let mut out: Vec<PartialClass> = Vec::new();
+
+        for class in res {
+            let course_number: &str = class.get(2).unwrap();
+            let course_title: Option<&str> = class.get(3);
+            out.push(PartialClass {
+                id: class.get(0).unwrap(),
+                course_reference_number: class.get(1).unwrap(),
+                course_number: course_number.to_string(),
+                course_title: course_title.map(|o| o.to_string())
+            });
+        }
+
+        Ok(out)
+    }
 }

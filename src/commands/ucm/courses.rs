@@ -1,3 +1,4 @@
+use chrono::{Datelike, Local};
 use log::error;
 use serenity::{
     client::Context,
@@ -31,12 +32,23 @@ fn fix_time(time: &str) -> String {
     format!("{}:{} PM", hour - 12, minute_str)
 }
 
-fn is_semester(input: &str) -> i32 {
+fn format_term(term: i32) -> String {
+    let semester = match term % 100 {
+        30 => "Fall",
+        20 => "Summer",
+        10 => "Summer",
+        _ => "Unknown"
+    };
+
+    format!("{} {}", semester, term / 100)
+}
+
+fn semester_from_text(input: &str) -> Option<i32> {
     match input.to_lowercase().as_str() {
-        "fall" => 10,
-        "spring" => 20,
-        "summer" => 30,
-        _ => -1
+        "fall" => Some(30),
+        "summer" => Some(20),
+        "spring" => Some(10),
+        _ => None
     }
 }
 
@@ -50,6 +62,7 @@ async fn course_embed(ctx: &Context, msg: &Message, class: &Class) -> CommandRes
         e.description("Enrollment and Waitlist are in terms of seats available/seats taken/max seats.");
         e.field("CRN", class.course_reference_number, true);
         e.field("Credit Hours", class.credit_hours, true);
+        e.field("Term", format_term(class.term), true);
         e.field("Enrollment", format!("{}/{}/{}", class.seats_available, class.enrollment, class.maximum_enrollment), true);
         e.field("Waitlist", format!("{}/{}/{}", class.wait_available, class.wait_capacity - class.wait_available, class.wait_capacity), true);
 
@@ -91,25 +104,107 @@ async fn course_embed(ctx: &Context, msg: &Message, class: &Class) -> CommandRes
 #[description = "Search for courses in a term."]
 #[usage = "<CRN, Course Number, or Name> [Semester] [Year]"]
 pub async fn courses(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    if let Ok(course_registration_number) = args.single::<i32>() {
-        // Make sure it's not a year lol
-        if course_registration_number >= 10000 {
-            let db = db!(ctx);
-            match db.get_class(course_registration_number).await {
-                Ok(option_class) => {
-                    if let Some(class) = option_class {
-                        course_embed(ctx, msg, &class).await?;
-                    } else {
-                        msg.channel_id.say(&ctx.http, format!("Could not find a class with the CRN `{}`.", course_registration_number)).await?;
+    let current_date = Local::now().date();
+    let mut year = current_date.year();
+    // You are required to specify if you want a summer class. Baka.
+    let mut semester = if current_date.month() >= 3 && current_date.month() <= 10 { 30 } else { 10 };
+    let mut search_query = String::new();
+
+    while !args.is_empty() {
+        if let Ok(numeric) = args.single::<i32>() {
+            // Make sure it's not a year lol
+            if numeric >= 10000 {
+                let db = db!(ctx);
+                match db.get_class(numeric).await {
+                    Ok(option_class) => {
+                        if let Some(class) = option_class {
+                            course_embed(ctx, msg, &class).await?;
+                        } else {
+                            msg.channel_id.say(&ctx.http, format!("Could not find a class with the CRN `{}`.", numeric)).await?;
+                        }
+                    }
+                    Err(ex) => {
+                        error!("Failed to get class: {}", ex);
+                        msg.channel_id.say(&ctx.http, "Failed to query our database... try again later?").await?;
                     }
                 }
-                Err(ex) => {
-                    error!("Failed to get class: {}", ex);
-                    msg.channel_id.say(&ctx.http, "Failed to query our database... try again later?").await?;
+                return Ok(())
+            } else {
+                year = numeric;
+            }
+        }
+
+        let text = args.single::<String>().unwrap();
+        if let Some(sem) = semester_from_text(&text) {
+            semester = sem;
+        } else {
+            search_query.push(' ');
+            search_query.push_str(&text);
+        }
+    }
+
+    let term = year * 100 + semester;
+    match search_course_by_number(ctx, msg, &search_query, term).await {
+        Ok(any) => {
+            if !any {
+                match search_course_by_name(ctx, msg, &search_query, term).await {
+                    Ok(any) => {
+                        if !any {
+                            msg.channel_id.say(&ctx.http, "Failed to find any classes with the given query. Did you mistype the input?").await?;
+                        }
+                    }
+                    Err(ex) => {
+                        error!("Failed to search by name: {}", ex);
+                        msg.channel_id.say(&ctx.http, "Failed to search for classes... try again later?").await?;
+                    }
                 }
             }
-            return Ok(())
         }
+        Err(ex) => {
+            error!("Failed to search by name: {}", ex);
+            msg.channel_id.say(&ctx.http, "Failed to search for classes... try again later?").await?;
+        }
+    }
+
+    Ok(())
+}
+
+async fn search_course_by_number(ctx: &Context, msg: &Message, search_query: &str, term: i32) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    let db = db!(ctx);
+    let classes = db.search_class_by_number(search_query, term).await?;
+    print_matches(ctx, msg, &classes).await?;
+
+    Ok(!classes.is_empty())
+}
+
+async fn search_course_by_name(ctx: &Context, msg: &Message, search_query: &str, term: i32) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    let db = db!(ctx);
+    let classes = db.search_class_by_name(search_query, term).await?;
+    print_matches(ctx, msg, &classes).await?;
+
+    Ok(!classes.is_empty())
+}
+
+async fn print_matches(ctx: &Context, msg: &Message, classes: &[PartialClass]) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    if classes.is_empty() { return Ok(()); }
+
+    if classes.len() == 1 {
+        let db = db!(ctx);
+        let class = db.get_class(classes[0].course_reference_number).await?.unwrap();
+        course_embed(ctx, msg, &class).await?;
+    } else {
+        msg.channel_id.send_message(&ctx.http, |m| m.embed(|e| {
+            e.title("Class Search").description("Multiple results were found for your query. Search again using the CRN for a particular class.");
+            e.field(format!("Classes Matched (totalling {})", classes.len()),
+                    classes
+                            .iter()
+                            .take(10)
+                            .map(|o| format!("`{}` - {}: {}", o.course_reference_number, o.course_number, o.course_title.clone().unwrap_or_else(|| "<unknown class name>".to_string())))
+                            .reduce(|a, b| format!("{}\n{}", a, b))
+                            .unwrap(),
+                    false);
+            e
+        })).await?;
     }
 
     Ok(())
