@@ -15,20 +15,20 @@ use tokio::io::AsyncWriteExt;
 #[derive(Debug, Deserialize)]
 struct Post {
     // 's', 'q', 'e' (safe, questionable, explicit)
-    pub rating: String,
+    pub rating: Option<String>,
     // Bytes.
-    pub file_size: u64,
+    pub file_size: Option<u64>,
     // MD5 hash.
-    pub md5: String,
+    pub md5: Option<String>,
     // Features of the image
-    pub tag_string_general: String,
-    pub tag_string_character: String,
-    pub tag_string_copyright: String,
-    pub tag_string_artist: String,
-    pub tag_string_meta: String,
-    pub file_url: String,
-    pub large_file_url: String,
-    pub preview_file_url: String
+    pub tag_string_general: Option<String>,
+    pub tag_string_character: Option<String>,
+    pub tag_string_copyright: Option<String>,
+    pub tag_string_artist: Option<String>,
+    pub tag_string_meta: Option<String>,
+    pub file_url: Option<String>,
+    pub large_file_url: Option<String>,
+    pub preview_file_url: Option<String>
 }
 
 #[command]
@@ -48,10 +48,14 @@ async fn momiji(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 fn is_nice_post(post: &Post) -> bool {
-    let is_comic = post.tag_string_general.split(' ').any(|o| o == "comic");
-    let character_count = post.tag_string_character.split(' ').count();
+    if post.tag_string_general.is_none() || post.file_url.is_none() || post.file_size.is_none() || post.tag_string_character.is_none() || post.tag_string_artist.is_none() {
+        return false;
+    }
 
-    post.file_size <= 8 * 1024 * 1024 &&
+    let is_comic = post.tag_string_general.clone().unwrap().split(' ').any(|o| o == "comic");
+    let character_count = post.tag_string_character.clone().unwrap().split(' ').count();
+
+    post.file_size.unwrap() <= 8 * 1024 * 1024 &&
         character_count <= 3 &&
         !is_comic
 }
@@ -87,9 +91,10 @@ async fn fetch_by_tag(ctx: &Context, msg: &Message, tag: &str) -> Result<(), Box
                 index = rand::thread_rng().gen_range(0..data.len());
                 post = data.get(index).unwrap();
             }
-            let last_index = post.file_url.rfind('/').unwrap() + 1;
-            let file_name = &post.file_url[last_index..];
-            let bytes = client.get(&post.file_url).send().await?.bytes().await?;
+            let file_url = post.file_url.clone().unwrap();
+            let last_index = &file_url.rfind('/').unwrap() + 1;
+            let file_name = &file_url[last_index..];
+            let bytes = client.get(&file_url).send().await?.bytes().await?;
             let mut file = fs::File::create(file_name).await?;
             file.write_all(&*bytes).await?;
 
@@ -97,7 +102,7 @@ async fn fetch_by_tag(ctx: &Context, msg: &Message, tag: &str) -> Result<(), Box
                 {
                     let execution = m
                         .embed(|e| {
-                            e.description(format!("Artist: {}", &post.tag_string_artist))
+                            e.description(format!("Artist: {}", post.tag_string_artist.clone().unwrap()))
                             .attachment(file_name);
 
                             e
