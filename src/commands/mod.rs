@@ -83,6 +83,9 @@ pub async fn get_framework(pref: &str, app_id: UserId, owners: HashSet<UserId>) 
         .bucket("diagnostics", |b| b.limit(2).time_span(15 * 60) // 15 minute delay for scan and fix.
             .limit_for(LimitedFor::Guild)
             .await_ratelimits(0)).await  // Don't delay, force them to re-execute since we don't want to hang the bot
+        .bucket("danbooru", |b| b.limit(1).time_span(3) // I don't have a full API key lol
+            .limit_for(LimitedFor::Global)
+            .await_ratelimits(0)).await
         .help(&COW_HELP)
         .group(&GENERAL_GROUP)
         .group(&RANKCONFIG_GROUP)

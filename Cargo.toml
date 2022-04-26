@@ -38,6 +38,8 @@ lavalink-rs = { version = "0.8.0", features = ["rustls", "serenity"] }
 regex = "1.5.5"
 # Wait bruh enums can't be bits?
 bitflags = "1.3.2"
+# RNG lol
+rand = "0.8.5"
 
 # Discord API
 [dependencies.serenity]
