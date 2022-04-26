@@ -239,12 +239,20 @@ impl Database {
         for class in res {
             let course_number: &str = class.get(2).unwrap();
             let course_title: Option<&str> = class.get(3);
-            out.push(PartialClass {
+
+            let item = PartialClass {
                 id: class.get(0).unwrap(),
                 course_reference_number: class.get(1).unwrap(),
                 course_number: course_number.to_string(),
                 course_title: course_title.map(|o| o.to_string())
-            });
+            };
+
+            if search_query == course_number || course_title.map(|o| o == search_query).unwrap_or(false) {
+                // Return early with one item
+                return Ok(vec![item]);
+            } else {
+                out.push(item);
+            }
         }
 
         Ok(out)
