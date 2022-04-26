@@ -47,6 +47,15 @@ async fn momiji(ctx: &Context, msg: &Message) -> CommandResult {
     Ok(())
 }
 
+fn is_nice_post(post: &Post) -> bool {
+    let is_comic = post.tag_string_general.split(' ').any(|o| o == "comic");
+    let character_count = post.tag_string_character.split(' ').count();
+
+    post.file_size <= 8 * 1024 * 1024 &&
+        character_count <= 3 &&
+        !is_comic
+}
+
 async fn fetch_by_tag(ctx: &Context, msg: &Message, tag: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let client = reqwest::Client::new();
 
@@ -74,7 +83,7 @@ async fn fetch_by_tag(ctx: &Context, msg: &Message, tag: &str) -> Result<(), Box
         Ok(data) => {
             let mut index = rand::thread_rng().gen_range(0..data.len());
             let mut post = data.get(index).unwrap();
-            while post.file_size >= 8 * 1024 * 1024 {
+            while !is_nice_post(post) {
                 index = rand::thread_rng().gen_range(0..data.len());
                 post = data.get(index).unwrap();
             }
@@ -88,7 +97,7 @@ async fn fetch_by_tag(ctx: &Context, msg: &Message, tag: &str) -> Result<(), Box
                 {
                     let execution = m
                         .embed(|e| {
-                            e.description(format!("Author: {}", &post.tag_string_artist))
+                            e.description(format!("Artist: {}", &post.tag_string_artist))
                             .attachment(file_name);
 
                             e
