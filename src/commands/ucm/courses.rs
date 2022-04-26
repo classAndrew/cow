@@ -1,4 +1,4 @@
-use chrono::{Datelike, Local};
+use chrono::{Datelike, DateTime, Local, TimeZone, Utc};
 use log::error;
 use serenity::{
     client::Context,
@@ -56,6 +56,7 @@ async fn course_embed(ctx: &Context, msg: &Message, class: &Class) -> CommandRes
     let db = db!(ctx);
     let professors = db.get_professors_for_class(class.id).await;
     let meetings = db.get_meetings_for_class(class.id).await;
+    let stats = db.get_stats().await;
 
     msg.channel_id.send_message(&ctx.http, |m| m.embed(|e| {
         e.title(format!("{}: {}", &class.course_number, class.course_title.clone().unwrap_or_else(|| "<unknown class name>".to_string())));
@@ -92,6 +93,15 @@ async fn course_embed(ctx: &Context, msg: &Message, class: &Class) -> CommandRes
                         .reduce(|a, b| format!("{}\n{}", a, b))
                         .unwrap_or_else(|| "No professors are assigned to this course.".to_string()),
                     false);
+        }
+
+        if let Ok(stats) = stats {
+            if let Some(class_update) = stats.get("class") {
+                let local_time: DateTime<Local> = Local.from_local_datetime(class_update).unwrap();
+                let utc_time: DateTime<Utc> = DateTime::from(local_time);
+                e.footer(|f| f.text("Last updated at"));
+                e.timestamp(utc_time);
+            }
         }
 
         e

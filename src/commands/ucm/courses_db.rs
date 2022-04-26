@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use chrono::NaiveDateTime;
 use num_traits::ToPrimitive;
 use serenity::{
     model::id::{
@@ -243,6 +245,25 @@ impl Database {
                 course_number: course_number.to_string(),
                 course_title: course_title.map(|o| o.to_string())
             });
+        }
+
+        Ok(out)
+    }
+
+    pub async fn get_stats(&self) -> Result<HashMap<String, NaiveDateTime>, Box<dyn std::error::Error + Send + Sync>> {
+        let mut conn = self.pool.get().await?;
+        let res = conn.simple_query(
+            "SELECT table_name, last_update FROM [UniScraper].[UCM].[stats];")
+            .await?
+            .into_first_result()
+            .await?;
+
+        let mut out = HashMap::new();
+
+        for meeting in res {
+            let table_name: &str = meeting.get(0).unwrap();
+            let last_update: NaiveDateTime = meeting.get(1).unwrap();
+            out.insert(table_name.to_string(), last_update);
         }
 
         Ok(out)
