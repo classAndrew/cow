@@ -15,7 +15,7 @@ use ban::*;
 use danbooru::*;
 
 #[group]
-#[commands(hello, time, info, rank, disablexp, levels, bangenshinplayers, banleagueplayers, banvalorantplayers, reimu, momiji)]
+#[commands(hello, time, info, rank, disablexp, levels, bangenshinplayers, banleagueplayers, banvalorantplayers, reimu, momiji, sanae, danbooru)]
 #[description = "General commands for miscellaneous tasks."]
 #[summary = "Basic commands"]
 struct General;

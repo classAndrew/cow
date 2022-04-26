@@ -1,14 +1,16 @@
+use std::convert::Infallible;
 use std::path::Path;
 use log::error;
 // Fun with stupid APIs!
 use serenity::client::Context;
-use serenity::framework::standard::{CommandResult};
+use serenity::framework::standard::{ArgError, Args, CommandResult};
 use serenity::model::channel::{Message};
 use serenity::framework::standard::macros::{command};
 use tokio::fs;
 use crate::Config;
 use serde::Deserialize;
 use rand::Rng;
+use regex::Regex;
 use serenity::http::AttachmentType;
 use tokio::io::AsyncWriteExt;
 
@@ -34,15 +36,37 @@ struct Post {
 #[command]
 #[bucket = "danbooru"]
 async fn reimu(ctx: &Context, msg: &Message) -> CommandResult {
-    let _ = fetch_by_tag(ctx, msg, "hakurei_reimu").await;
-
-    Ok(())
+    fetch_by_tag(ctx, msg, "hakurei_reimu").await
 }
 
 #[command]
 #[bucket = "danbooru"]
 async fn momiji(ctx: &Context, msg: &Message) -> CommandResult {
-    let _ = fetch_by_tag(ctx, msg, "inubashiri_momiji").await;
+    fetch_by_tag(ctx, msg, "inubashiri_momiji").await
+}
+
+#[command]
+#[bucket = "danbooru"]
+async fn sanae(ctx: &Context, msg: &Message) -> CommandResult {
+    fetch_by_tag(ctx, msg, "kochiya_sanae").await
+}
+
+#[command]
+#[bucket = "danbooru"]
+async fn danbooru(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let non_tag = Regex::new(r"[^A-Za-z0-9()_.]").unwrap();
+    let tag_option = args
+        .iter()
+        .map(|o: Result<String, ArgError<Infallible>>| o) // Identity map to set type. It keeps complaining.
+        .map(|o| o.unwrap().trim().to_lowercase())
+        .map(|o| non_tag.replace_all(&*o, "").to_string())
+        .reduce(|a, b| format!("{}_{}", a, b));
+
+    if let Some(tag) = tag_option {
+        return fetch_by_tag(ctx, msg, &tag).await;
+    } else {
+        msg.channel_id.say(&ctx.http, "You need to pass a valid Danbooru tag to search for.").await?;
+    }
 
     Ok(())
 }
@@ -85,6 +109,11 @@ async fn fetch_by_tag(ctx: &Context, msg: &Message, tag: &str) -> Result<(), Box
 
     match data.json::<Vec<Post>>().await {
         Ok(data) => {
+            if data.is_empty() {
+                msg.channel_id.say(&ctx.http, "No results found...").await?;
+                return Ok(());
+            }
+
             let mut index = rand::thread_rng().gen_range(0..data.len());
             let mut post = data.get(index).unwrap();
             while !is_nice_post(post) {
@@ -102,8 +131,10 @@ async fn fetch_by_tag(ctx: &Context, msg: &Message, tag: &str) -> Result<(), Box
                 {
                     let execution = m
                         .embed(|e| {
-                            e.description(format!("Artist: {}", post.tag_string_artist.clone().unwrap()))
+                            e.title(format!("Artist: {}", post.tag_string_artist.clone().unwrap()))
+                            .url(post.file_url.clone().unwrap())
                             .attachment(file_name);
+
 
                             e
                         });
