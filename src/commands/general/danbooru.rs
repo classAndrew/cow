@@ -9,7 +9,6 @@ use serenity::framework::standard::macros::{command};
 use tokio::fs;
 use crate::Config;
 use serde::Deserialize;
-use rand::Rng;
 use regex::Regex;
 use serenity::http::AttachmentType;
 use tokio::io::AsyncWriteExt;
@@ -93,63 +92,65 @@ async fn fetch_by_tag(ctx: &Context, msg: &Message, tag: &str) -> Result<(), Box
     let url = if let Some(channel) = msg.channel(&ctx).await {
         if channel.is_nsfw() {
             // I'm not even going to test this.
-            format!("https://danbooru.donmai.us/posts.json?tags={}&limit=200", tag)
+            format!("https://danbooru.donmai.us/posts/random.json?tags={}", tag)
         } else {
-            format!("https://danbooru.donmai.us/posts.json?tags=rating:s+{}&limit=200", tag)
+            format!("https://danbooru.donmai.us/posts/random.json?tags=rating:s+{}", tag)
         }
     } else {
-        format!("https://danbooru.donmai.us/posts.json?tags=rating:s+{}&limit=200", tag)
+        format!("https://danbooru.donmai.us/posts/random.json?tags=rating:s+{}", tag)
     };
 
-    let data = client
-        .get(url)
-        .basic_auth(config.danbooru_login, Some(config.danbooru_api_key))
+    match client
+        .get(&url)
+        .basic_auth(&config.danbooru_login, Some(&config.danbooru_api_key))
         .send()
-        .await?;
-
-    match data.json::<Vec<Post>>().await {
+        .await {
         Ok(data) => {
-            if data.is_empty() {
-                msg.channel_id.say(&ctx.http, "No results found...").await?;
-                return Ok(());
-            }
+            match data.json::<Post>().await {
+                Ok(mut post) => {
+                    while !is_nice_post(&post) {
+                        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                        post = client.get(&url).basic_auth(&config.danbooru_login, Some(&config.danbooru_api_key)).send().await?.json::<Post>().await?;
+                    }
 
-            let mut index = rand::thread_rng().gen_range(0..data.len());
-            let mut post = data.get(index).unwrap();
-            while !is_nice_post(post) {
-                index = rand::thread_rng().gen_range(0..data.len());
-                post = data.get(index).unwrap();
-            }
-            let file_url = post.file_url.clone().unwrap();
-            let last_index = &file_url.rfind('/').unwrap() + 1;
-            let file_name = &file_url[last_index..];
-            let bytes = client.get(&file_url).send().await?.bytes().await?;
-            let mut file = fs::File::create(file_name).await?;
-            file.write_all(&*bytes).await?;
+                    /*
+                    let file_url = post.file_url.clone().unwrap();
+                    let last_index = &file_url.rfind('/').unwrap() + 1;
+                    let file_name = &file_url[last_index..];
+                    let bytes = client.get(&file_url).send().await?.bytes().await?;
+                    let mut file = fs::File::create(file_name).await?;
+                    file.write_all(&*bytes).await?;*/
 
-            let _ = msg.channel_id.send_message(&ctx.http, |m|
-                {
-                    let execution = m
-                        .embed(|e| {
-                            e.title(format!("Artist: {}", post.tag_string_artist.clone().unwrap()))
-                            .url(post.file_url.clone().unwrap())
-                            .attachment(file_name);
+                    let _ = msg.channel_id.send_message(&ctx.http, |m|
+                        {
+                            let execution = m
+                                .embed(|e| {
+                                    e.title(format!("Artist: {}", post.tag_string_artist.clone().unwrap()))
+                                        .url(post.file_url.clone().unwrap())
+                                        //.attachment(file_name);
+                                        .image(post.file_url.unwrap());
 
 
-                            e
-                        });
+                                    e
+                                });
 
-                    execution.add_file(AttachmentType::Path(Path::new(file_name)));
+                            //execution.add_file(AttachmentType::Path(Path::new(file_name)));
 
-                    execution
+                            execution
+                        }
+                    ).await;
+
+                    //fs::remove_file(file_name).await?;
+                },
+                Err(ex) => {
+                    error!("No results found...: {}", ex);
+                    msg.channel_id.say(&ctx.http, "No results found...").await?;
                 }
-            ).await;
-
-            fs::remove_file(file_name).await?;
+            }
         },
         Err(ex) => {
-            error!("Failed to fetch data from Danbooru: {}", ex);
-            msg.channel_id.say(&ctx.http, "Failed to send message").await?;
+            error!("Failed to send request: {}", ex);
+            msg.channel_id.say(&ctx.http, "Failed to access Danbooru... try again later?").await?;
         }
     }
 
