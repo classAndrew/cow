@@ -1,5 +1,4 @@
 use std::convert::Infallible;
-use std::path::Path;
 use log::error;
 // Fun with stupid APIs!
 use serenity::client::Context;
@@ -10,26 +9,17 @@ use tokio::fs;
 use crate::Config;
 use serde::Deserialize;
 use regex::Regex;
-use serenity::http::AttachmentType;
-use tokio::io::AsyncWriteExt;
+use serenity::utils::MessageBuilder;
 
 #[derive(Debug, Deserialize)]
 struct Post {
-    // 's', 'q', 'e' (safe, questionable, explicit)
-    pub rating: Option<String>,
     // Bytes.
     pub file_size: Option<u64>,
-    // MD5 hash.
-    pub md5: Option<String>,
     // Features of the image
     pub tag_string_general: Option<String>,
     pub tag_string_character: Option<String>,
-    pub tag_string_copyright: Option<String>,
     pub tag_string_artist: Option<String>,
-    pub tag_string_meta: Option<String>,
-    pub file_url: Option<String>,
-    pub large_file_url: Option<String>,
-    pub preview_file_url: Option<String>
+    pub file_url: Option<String>
 }
 
 #[command]
@@ -56,8 +46,7 @@ async fn danbooru(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult
     let non_tag = Regex::new(r"[^A-Za-z0-9()_.]").unwrap();
     let tag_option = args
         .iter()
-        .map(|o: Result<String, ArgError<Infallible>>| o) // Identity map to set type. It keeps complaining.
-        .map(|o| o.unwrap().trim().to_lowercase())
+        .map(|o: Result<String, ArgError<Infallible>>| o.unwrap().trim().to_lowercase())
         .map(|o| non_tag.replace_all(&*o, "").to_string())
         .reduce(|a, b| format!("{}_{}", a, b));
 
@@ -91,7 +80,7 @@ async fn fetch_by_tag(ctx: &Context, msg: &Message, tag: &str) -> Result<(), Box
 
     let url = if let Some(channel) = msg.channel(&ctx).await {
         if channel.is_nsfw() {
-            // I'm not even going to test this.
+            // Unfortunately, someone else tested this for me. It works.
             format!("https://danbooru.donmai.us/posts/random.json?tags={}", tag)
         } else {
             format!("https://danbooru.donmai.us/posts/random.json?tags=rating:s+{}", tag)
@@ -106,41 +95,29 @@ async fn fetch_by_tag(ctx: &Context, msg: &Message, tag: &str) -> Result<(), Box
         .send()
         .await {
         Ok(data) => {
-            match data.json::<Post>().await {
+            let text = data.text().await.unwrap();
+            error!("Response: {}", text);
+            match serde_json::from_str::<Post>(&*text) {
                 Ok(mut post) => {
-                    while !is_nice_post(&post) {
+                    let mut attempts = 0;
+                    while !is_nice_post(&post) && attempts < 3 {
                         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-                        post = client.get(&url).basic_auth(&config.danbooru_login, Some(&config.danbooru_api_key)).send().await?.json::<Post>().await?;
+                        post = client.get(&url).basic_auth(&config.danbooru_login, Some(&config.danbooru_api_key)).send().await.unwrap().json::<Post>().await.unwrap();
+                        attempts += 1;
                     }
 
-                    /*
-                    let file_url = post.file_url.clone().unwrap();
-                    let last_index = &file_url.rfind('/').unwrap() + 1;
-                    let file_name = &file_url[last_index..];
-                    let bytes = client.get(&file_url).send().await?.bytes().await?;
-                    let mut file = fs::File::create(file_name).await?;
-                    file.write_all(&*bytes).await?;*/
+                    if attempts >= 3 {
+                        msg.channel_id.say(&ctx.http, "Temporary failure; rate limit?").await?;
+                        return Ok(());
+                    }
 
                     let _ = msg.channel_id.send_message(&ctx.http, |m|
-                        {
-                            let execution = m
-                                .embed(|e| {
-                                    e.title(format!("Artist: {}", post.tag_string_artist.clone().unwrap()))
-                                        .url(post.file_url.clone().unwrap())
-                                        //.attachment(file_name);
-                                        .image(post.file_url.unwrap());
-
-
-                                    e
-                                });
-
-                            //execution.add_file(AttachmentType::Path(Path::new(file_name)));
-
-                            execution
-                        }
+                        m.embed(|e|
+                            e.title(MessageBuilder::new().push("Artist: ").push_safe(post.tag_string_artist.clone().unwrap()).build())
+                                .url(post.file_url.clone().unwrap())
+                                .image(post.file_url.unwrap())
+                        )
                     ).await;
-
-                    //fs::remove_file(file_name).await?;
                 },
                 Err(ex) => {
                     error!("No results found...: {}", ex);
