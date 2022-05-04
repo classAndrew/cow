@@ -70,7 +70,7 @@ async fn course_embed(ctx: &Context, msg: &Message, class: &Class) -> CommandRes
         if let Ok(professors) = professors {
             e.field("Professor(s)",
                     professors.iter()
-                        .map(|o| format!("- {} {}", o.first_name.clone(), o.last_name.clone()))
+                        .map(|o| format!("- {}", o.full_name.clone()))
                         .reduce(|a, b| format!("{}\n{}", a, b))
                         .unwrap_or_else(|| "No professors are assigned to this course.".to_string()),
                     false);
