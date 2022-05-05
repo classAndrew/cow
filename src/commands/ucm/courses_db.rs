@@ -126,7 +126,7 @@ impl Database {
     pub async fn get_professors_for_class(&self, class_id: i32) -> Result<Vec<Professor>, Box<dyn std::error::Error + Send + Sync>> {
         let mut conn = self.pool.get().await?;
         let res = conn.query(
-            "SELECT professor.id, rmp_id, last_name, first_name, middle_name, email, department, num_ratings, rating FROM [UniScraper].[UCM].[professor] INNER JOIN [UniScraper].[UCM].[faculty] ON professor.id = faculty.professor_id WHERE class_id = @P1;",
+            "SELECT professor.id, rmp_id, last_name, first_name, middle_name, email, department, num_ratings, rating, full_name FROM [UniScraper].[UCM].[professor] INNER JOIN [UniScraper].[UCM].[faculty] ON professor.id = faculty.professor_id WHERE class_id = @P1;",
             &[&class_id])
             .await?
             .into_first_result()
@@ -140,6 +140,7 @@ impl Database {
             let middle_name: Option<&str> = professor.get(4);
             let email: Option<&str> = professor.get(5);
             let department: Option<&str> = professor.get(6);
+            let full_name: &str = professor.get(9).unwrap();
             out.push(Professor {
                 id: professor.get(0).unwrap(),
                 rmp_id: professor.get(1),
@@ -149,7 +150,8 @@ impl Database {
                 email: email.map(|o| o.to_string()),
                 department: department.map(|o| o.to_string()),
                 num_ratings: professor.get(7).unwrap(),
-                rating: professor.get(8).unwrap()
+                rating: professor.get(8).unwrap(),
+                full_name: full_name.to_string()
             });
         }
 
@@ -218,16 +220,20 @@ impl Database {
                     WHERE mukyu.RowNumber = 1;").await
     }
 
-    async fn general_class_search(&self, search_query: &str, term: i32, sql: &str) -> Result<Vec<PartialClass>, Box<dyn std::error::Error + Send + Sync>> {
-        let mut conn = self.pool.get().await?;
-
-        let input = search_query
+    fn create_full_text_query(&self, search_query: &str) -> String {
+        search_query
             .trim()
             .split(' ')
             .map(|o| o.replace('(', "").replace(')', "").replace('\"', "").replace('\'', "")) // *unqueries your query*
             .map(|o| format!("\"*{}*\"", o)) // Wildcards
             .reduce(|a, b| format!("{} AND {}", a, b))
-            .unwrap();
+            .unwrap()
+    }
+
+    async fn general_class_search(&self, search_query: &str, term: i32, sql: &str) -> Result<Vec<PartialClass>, Box<dyn std::error::Error + Send + Sync>> {
+        let mut conn = self.pool.get().await?;
+
+        let input = self.create_full_text_query(search_query);
 
         let res = conn.query(sql, &[&term, &input])
             .await?
@@ -253,6 +259,72 @@ impl Database {
             } else {
                 out.push(item);
             }
+        }
+
+        Ok(out)
+    }
+
+    pub async fn search_professor(&self, search_query: &str) -> Result<Vec<Professor>, Box<dyn std::error::Error + Send + Sync>> {
+        let mut conn = self.pool.get().await?;
+
+        let input = self.create_full_text_query(search_query);
+
+        let res = conn.query("SELECT id, rmp_id, last_name, first_name, middle_name, email, department, num_ratings, rating, full_name FROM [UniScraper].[UCM].[professor] WHERE CONTAINS(full_name, @P1);", &[&input])
+            .await?
+            .into_first_result()
+            .await?;
+
+        let mut out: Vec<Professor> = Vec::new();
+
+        for professor in res {
+            let last_name: &str = professor.get(2).unwrap();
+            let first_name: &str = professor.get(3).unwrap();
+            let middle_name: Option<&str> = professor.get(4);
+            let email: Option<&str> = professor.get(5);
+            let department: Option<&str> = professor.get(6);
+            let full_name: &str = professor.get(9).unwrap();
+            out.push(Professor {
+                id: professor.get(0).unwrap(),
+                rmp_id: professor.get(1),
+                last_name: last_name.to_string(),
+                first_name: first_name.to_string(),
+                middle_name: middle_name.map(|o| o.to_string()),
+                email: email.map(|o| o.to_string()),
+                department: department.map(|o| o.to_string()),
+                num_ratings: professor.get(7).unwrap(),
+                rating: professor.get(8).unwrap(),
+                full_name: full_name.to_string()
+            });
+        }
+
+        Ok(out)
+    }
+
+    pub async fn get_classes_for_professor(&self, professor_id: i32, term: i32) -> Result<Vec<PartialClass>, Box<dyn std::error::Error + Send + Sync>> {
+        let mut conn = self.pool.get().await?;
+
+        let res = conn.query("SELECT class.id, class.course_reference_number, class.course_number, class.course_title FROM [UniScraper].[UCM].[professor] \
+            INNER JOIN [UniScraper].[UCM].[faculty] ON professor.id = faculty.professor_id \
+            INNER JOIN [UniScraper].[UCM].[class] ON class.id = faculty.class_id \
+            WHERE class.term = @P1 AND professor.id = @P2", &[&term, &professor_id])
+            .await?
+            .into_first_result()
+            .await?;
+
+        let mut out: Vec<PartialClass> = Vec::new();
+
+        for class in res {
+            let course_number: &str = class.get(2).unwrap();
+            let course_title: Option<&str> = class.get(3);
+
+            let item = PartialClass {
+                id: class.get(0).unwrap(),
+                course_reference_number: class.get(1).unwrap(),
+                course_number: course_number.to_string(),
+                course_title: course_title.map(|o| o.to_string())
+            };
+
+            out.push(item);
         }
 
         Ok(out)

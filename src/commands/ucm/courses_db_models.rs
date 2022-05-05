@@ -118,6 +118,7 @@ pub struct Professor {
     pub last_name: String,
     pub first_name: String,
     pub middle_name: Option<String>,
+    pub full_name: String,
     pub email: Option<String>,
     pub department: Option<String>,
     pub num_ratings: i32,

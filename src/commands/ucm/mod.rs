@@ -2,6 +2,7 @@ mod library;
 mod libcal_models;
 mod courses;
 mod courses_old;
+mod professors;
 mod course_models;
 mod pavilion;
 mod pav_models;
@@ -17,11 +18,12 @@ use library::*;
 use courses::*;
 use courses_old::*;
 use pavilion::*;
+use professors::*;
 
 #[group]
 #[prefixes("ucm", "ucmerced")]
 #[description = "Get information about UC Merced's services and facilities."]
 #[summary = "UC Merced info"]
-#[commands(library, courses, courses_old, pavilion)]
+#[commands(library, courses, courses_old, pavilion, professors)]
 #[sub_groups(reminders)]
 struct UCM;
