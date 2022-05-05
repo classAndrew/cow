@@ -32,7 +32,7 @@ fn fix_time(time: &str) -> String {
     format!("{}:{} PM", hour - 12, minute_str)
 }
 
-fn format_term(term: i32) -> String {
+pub fn format_term(term: i32) -> String {
     let semester = match term % 100 {
         30 => "Fall",
         20 => "Summer",
@@ -43,7 +43,7 @@ fn format_term(term: i32) -> String {
     format!("{} {}", semester, term / 100)
 }
 
-fn semester_from_text(input: &str) -> Option<i32> {
+pub fn semester_from_text(input: &str) -> Option<i32> {
     match input.to_lowercase().as_str() {
         "fall" => Some(30),
         "summer" => Some(20),

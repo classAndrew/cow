@@ -300,6 +300,36 @@ impl Database {
         Ok(out)
     }
 
+    pub async fn get_classes_for_professor(&self, professor_id: i32, term: i32) -> Result<Vec<PartialClass>, Box<dyn std::error::Error + Send + Sync>> {
+        let mut conn = self.pool.get().await?;
+
+        let res = conn.query("SELECT class.id, class.course_reference_number, class.course_number, class.course_title FROM [UniScraper].[UCM].[professor] \
+            INNER JOIN [UniScraper].[UCM].[faculty] ON professor.id = faculty.professor_id \
+            INNER JOIN [UniScraper].[UCM].[class] ON class.id = faculty.class_id \
+            WHERE class.term = @P1 AND professor.id = @P2", &[&term, &professor_id])
+            .await?
+            .into_first_result()
+            .await?;
+
+        let mut out: Vec<PartialClass> = Vec::new();
+
+        for class in res {
+            let course_number: &str = class.get(2).unwrap();
+            let course_title: Option<&str> = class.get(3);
+
+            let item = PartialClass {
+                id: class.get(0).unwrap(),
+                course_reference_number: class.get(1).unwrap(),
+                course_number: course_number.to_string(),
+                course_title: course_title.map(|o| o.to_string())
+            };
+
+            out.push(item);
+        }
+
+        Ok(out)
+    }
+
     pub async fn get_stats(&self) -> Result<HashMap<String, NaiveDateTime>, Box<dyn std::error::Error + Send + Sync>> {
         let mut conn = self.pool.get().await?;
         let res = conn.simple_query(
