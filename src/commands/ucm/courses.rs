@@ -115,6 +115,11 @@ async fn course_embed(ctx: &Context, msg: &Message, class: &Class) -> CommandRes
 #[aliases("course")]
 #[usage = "<CRN, Course Number, or Name> [Semester] [Year]"]
 pub async fn courses(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    if args.is_empty() {
+        msg.channel_id.say(&ctx.http, "Type the CRN, course number, or name of the class to look it up.").await?;
+        return Ok(());
+    }
+
     let current_date = Local::now().date();
     let mut year = current_date.year();
     // You are required to specify if you want a summer class. Baka.
