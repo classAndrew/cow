@@ -54,7 +54,7 @@ fn paragraph_to_date(input: &str) -> NaiveDate {
     let mut year: i32 = 2022;
 
     // I could use RegEx, buuut
-    let nicer_input = input.to_lowercase().replace('.', " ").replace(',', " ").replace('/', " ").replace('-', " ").replace(">", " ").replace("<", " ");
+    let nicer_input = input.to_lowercase().replace('.', " ").replace(',', " ").replace('/', " ").replace('-', " ").replace('>', " ").replace('<', " ");
     for item in nicer_input.split(' ') {
         if !month_modified && item.len() >= 3 {
             match &item[..3] {
