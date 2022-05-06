@@ -10,6 +10,7 @@ pub mod reminders;
 mod courses_db;
 mod courses_db_models;
 mod foodtrucks;
+mod calendar;
 
 use serenity::framework::standard::macros::group;
 
@@ -21,11 +22,12 @@ use courses_old::*;
 use pavilion::*;
 use professors::*;
 use foodtrucks::*;
+use calendar::*;
 
 #[group]
 #[prefixes("ucm", "ucmerced")]
 #[description = "Get information about UC Merced's services and facilities."]
 #[summary = "UC Merced info"]
-#[commands(library, courses, courses_old, pavilion, professors, foodtrucks)]
+#[commands(library, courses, courses_old, pavilion, professors, foodtrucks, calendar)]
 #[sub_groups(reminders)]
 struct UCM;

@@ -122,7 +122,7 @@ pub async fn courses(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
     let mut search_query = String::new();
 
     while !args.is_empty() {
-        if let Ok(numeric) = args.single::<i32>() {
+        if let Ok(numeric) = args.parse::<i32>() {
             // Make sure it's not a year lol
             if numeric >= 10000 {
                 let db = db!(ctx);
@@ -140,8 +140,10 @@ pub async fn courses(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
                     }
                 }
                 return Ok(())
-            } else {
+            } else if numeric >= 2005 {
                 year = numeric;
+                args.advance();
+                continue;
             }
         }
 
