@@ -115,6 +115,11 @@ async fn course_embed(ctx: &Context, msg: &Message, class: &Class) -> CommandRes
 #[aliases("course")]
 #[usage = "<CRN, Course Number, or Name> [Semester] [Year]"]
 pub async fn courses(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    if args.is_empty() {
+        msg.channel_id.say(&ctx.http, "Type the CRN, course number, or name of the class to look it up.").await?;
+        return Ok(());
+    }
+
     let current_date = Local::now().date();
     let mut year = current_date.year();
     // You are required to specify if you want a summer class. Baka.
@@ -122,7 +127,7 @@ pub async fn courses(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
     let mut search_query = String::new();
 
     while !args.is_empty() {
-        if let Ok(numeric) = args.single::<i32>() {
+        if let Ok(numeric) = args.parse::<i32>() {
             // Make sure it's not a year lol
             if numeric >= 10000 {
                 let db = db!(ctx);
@@ -140,8 +145,10 @@ pub async fn courses(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
                     }
                 }
                 return Ok(())
-            } else {
+            } else if numeric >= 2005 {
                 year = numeric;
+                args.advance();
+                continue;
             }
         }
 
