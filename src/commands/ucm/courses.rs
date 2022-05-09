@@ -36,7 +36,7 @@ pub fn format_term(term: i32) -> String {
     let semester = match term % 100 {
         30 => "Fall",
         20 => "Summer",
-        10 => "Summer",
+        10 => "Spring",
         _ => "Unknown"
     };
 
@@ -91,7 +91,7 @@ async fn course_embed(ctx: &Context, msg: &Message, class: &Class) -> CommandRes
                             output
                         })
                         .reduce(|a, b| format!("{}\n{}", a, b))
-                        .unwrap_or_else(|| "No professors are assigned to this course.".to_string()),
+                        .unwrap_or_else(|| "No meetings are assigned to this course.".to_string()),
                     false);
         }
 
