@@ -52,6 +52,27 @@ bitflags! {
     }
 }
 
+impl Display for Days {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let days_copy = *self;
+        if days_copy == Days::BASE {
+            return write!(f, "<no days assigned>");
+        }
+
+        let mut days = String::new();
+
+        if days_copy.contains(Days::SUNDAY) { days.push_str("Sunday, "); }
+        if days_copy.contains(Days::MONDAY) { days.push_str("Monday, "); }
+        if days_copy.contains(Days::TUESDAY) { days.push_str("Tuesday, "); }
+        if days_copy.contains(Days::WEDNESDAY) { days.push_str("Wednesday, "); }
+        if days_copy.contains(Days::THURSDAY) { days.push_str("Thursday, "); }
+        if days_copy.contains(Days::FRIDAY) { days.push_str("Friday, "); }
+        if days_copy.contains(Days::SATURDAY) { days.push_str("Saturday, "); }
+
+        write!(f, "{}", &days[0..days.len() - 2])
+    }
+}
+
 #[repr(u8)]
 #[derive(FromPrimitive)]
 pub enum MeetingType {
