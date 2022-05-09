@@ -85,7 +85,7 @@ async fn course_embed(ctx: &Context, msg: &Message, class: &Class) -> CommandRes
                             if o.begin_time.is_some() && o.end_time.is_some() {
                                 let begin_time = o.begin_time.clone().unwrap();
                                 let end_time = o.end_time.clone().unwrap();
-                                return format!("{} from {} to {}", output, fix_time(&begin_time), fix_time(&end_time));
+                                return format!("{} ({} - {}) from {} to {} on {}", output, o.begin_date, o.end_date, fix_time(&begin_time), fix_time(&end_time), o.in_session);
                             }
 
                             output
