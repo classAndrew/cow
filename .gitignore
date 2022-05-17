@@ -29,3 +29,9 @@ testData
 
 # Skip the main config file
 config.json
+
+# Ignore Visual Studio's files (usually from switching from the db branch)
+.vs/
+Cow.dbmdl
+Cow.sqlproj.user
+obj/
