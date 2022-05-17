@@ -1,0 +1,5 @@
+﻿CREATE TABLE [Ranking].[User] (
+    [id] DECIMAL (20) NOT NULL,
+    CONSTRAINT [PK_User] PRIMARY KEY CLUSTERED ([id] ASC)
+);
+
