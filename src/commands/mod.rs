@@ -64,7 +64,8 @@ async fn non_command(ctx: &Context, msg: &Message) {
 async fn on_error(ctx: &Context, msg: &Message, error: DispatchError) {
     if let DispatchError::Ratelimited(info) = error {
         if info.is_first_try {
-            if let Err(ex) = msg.channel_id.say(&ctx.http, &format!("This command is rate-limited, please try this again in {} seconds.", info.as_secs())).await {
+            // Why round up when we can add one?
+            if let Err(ex) = msg.channel_id.say(&ctx.http, &format!("This command is rate-limited, please try this again in {} seconds.", info.as_secs() + 1)).await {
                 error!("Failed to send rate-limit message: {}", ex);
             }
         }

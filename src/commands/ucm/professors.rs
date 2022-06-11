@@ -32,11 +32,12 @@ async fn professor_embed(ctx: &Context, msg: &Message, professor: &Professor) ->
         e.field("Number of Ratings", professor.num_ratings, true);
         e.field("Email", professor.email.clone().unwrap(), true);
 
+
         if let Ok(classes) = classes {
-            e.field(format!("Classes for {}", crate::commands::ucm::format_term(term)),
+            e.field(format!("Classes for {} (totalling {})", crate::commands::ucm::format_term(term), classes.len()),
                     classes.iter()
                         .map(|o| format!("- {} (`{}`): {}", &o.course_number, o.course_reference_number, o.course_title.clone().unwrap_or_else(|| "<unknown class name>".to_string())))
-                        .reduce(|a, b| format!("{}\n{}", a, b))
+                        .reduce(|a, b| if a.len() < 1000 { format!("{}\n{}", a, b) } else {a})
                         .unwrap_or_else(|| "This person is not teaching any classes for this term.".to_string()),
                     false);
         }
